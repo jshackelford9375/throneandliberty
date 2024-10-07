@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Throne and Liberty Cycle Tracker</title>
+    <style>
+        body {
+            font-family: 'Cinzel', serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('https://api.placeholder.com/800/600');
+            background-size: cover;
+            background-position: center;
+        }
+        .container {
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+        #cycle-info, #utc-time, #local-time {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        #timer-container {
+            margin-bottom: 1rem;
+        }
+        #timer-label {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #timer {
+            font-size: 3rem;
+        }
+        #phase {
+            font-size: 2rem;
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+        .night {
+            color: #9932cc;
+        }
+        .day {
+            color: #ffa500;
+        }
+        #credits {
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Throne and Liberty Day/Night Tracker</h1>
+        <div id="cycle-info">Current Cycle:</div>
+        <div id="utc-time">UTC Time: </div>
+        <div id="local-time">Local Time: </div>
+        <div id="timer-container">
+            <div id="timer-label"></div>
+            <div id="timer">00:00:00</div>
+        </div>
+        <div id="phase">Loading...</div>
+        <div id="credits">Brought to you by Okami and AmberMist</div>
+    </div>
+
+    <script>
+        function updateCycle() {
+            const now = new Date();
+            const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+            const utcSeconds = now.getUTCSeconds();
+            const cycleMinutes = utcMinutes % 240; // 4 hours cycle
+            const cycleSeconds = cycleMinutes * 60 + utcSeconds;
+
+            let phase, timeLeft, nextPhase;
+            if (cycleSeconds < 1800) { // 30 minutes in seconds
+                phase = "Night";
+                nextPhase = "Day";
+                timeLeft = 1800 - cycleSeconds;
+            } else {
+                phase = "Day";
+                nextPhase = "Night";
+                timeLeft = 14400 - cycleSeconds; // 4 hours in seconds
+            }
+
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const seconds = timeLeft % 60;
+
+            document.getElementById('timer-label').textContent = `Time until ${nextPhase}:`;
+            document.getElementById('timer').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('phase').textContent = `Current Phase: ${phase}`;
+            document.getElementById('phase').className = phase.toLowerCase();
+
+            const cycleNumber = Math.floor(utcMinutes / 240) + 1;
+            document.getElementById('cycle-info').textContent = `Current Cycle: ${cycleNumber}`;
+
+            // Update UTC time without date
+            document.getElementById('utc-time').textContent = `UTC Time: ${now.toUTCString().split(' ')[4]}`;
+
+            // Update local time without date
+            document.getElementById('local-time').textContent = `Local Time: ${now.toLocaleTimeString()}`;
+        }
+
+        setInterval(updateCycle, 1000);
+        updateCycle(); // Initial call
+    </script>
+</body>
+</html>
