@@ -76,27 +76,30 @@
     </div>
 
     <script>
+        const CYCLE_DURATION = 3 * 60 * 60; // 3 hours in seconds
+        const DAY_DURATION = 2.5 * 60 * 60; // 2.5 hours in seconds
+        const NIGHT_DURATION = CYCLE_DURATION - DAY_DURATION; // 30 minutes in seconds
+
         function updateCycle() {
             const now = new Date();
-            const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-            const utcSeconds = now.getUTCSeconds();
-            const cycleMinutes = utcMinutes % 240; // 4 hours cycle
-            const cycleSeconds = cycleMinutes * 60 + utcSeconds;
+            const midnightUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+            const secondsSinceMidnight = (now - midnightUTC) / 1000;
+            const cycleSeconds = secondsSinceMidnight % CYCLE_DURATION;
 
             let phase, timeLeft, nextPhase;
-            if (cycleSeconds < 1800) { // 30 minutes in seconds
-                phase = "Night";
-                nextPhase = "Day";
-                timeLeft = 1800 - cycleSeconds;
-            } else {
+            if (cycleSeconds < DAY_DURATION) {
                 phase = "Day";
                 nextPhase = "Night";
-                timeLeft = 14400 - cycleSeconds; // 4 hours in seconds
+                timeLeft = DAY_DURATION - cycleSeconds;
+            } else {
+                phase = "Night";
+                nextPhase = "Day";
+                timeLeft = CYCLE_DURATION - cycleSeconds;
             }
 
             const hours = Math.floor(timeLeft / 3600);
             const minutes = Math.floor((timeLeft % 3600) / 60);
-            const seconds = timeLeft % 60;
+            const seconds = Math.floor(timeLeft % 60);
 
             document.getElementById('timer-label').textContent = `Time until ${nextPhase}:`;
             document.getElementById('timer').textContent = 
@@ -104,7 +107,7 @@
             document.getElementById('phase').textContent = `Current Phase: ${phase}`;
             document.getElementById('phase').className = phase.toLowerCase();
 
-            const cycleNumber = Math.floor(utcMinutes / 240) + 1;
+            const cycleNumber = Math.floor(secondsSinceMidnight / CYCLE_DURATION) + 1;
             document.getElementById('cycle-info').textContent = `Current Cycle: ${cycleNumber}`;
 
             // Update UTC time without date
