@@ -12,11 +12,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-image: url('https://api.placeholder.com/800/600');
             background-size: cover;
             background-position: center;
+            padding: 20px;
         }
         .container {
             text-align: center;
@@ -24,23 +25,25 @@
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            max-width: 600px;
+            width: 100%;
         }
-        h1 {
+        h1, h2 {
             color: #ffd700;
             margin-bottom: 1rem;
         }
-        #cycle-info, #utc-time, #local-time {
+        #cycle-info, #utc-time, #local-time, .event-info {
             font-size: 1.2rem;
             margin-bottom: 0.5rem;
         }
-        #timer-container {
+        .timer-container {
             margin-bottom: 1rem;
         }
-        #timer-label {
+        .timer-label {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
         }
-        #timer {
+        .timer {
             font-size: 3rem;
         }
         #phase {
@@ -59,19 +62,44 @@
             margin-top: 1rem;
             font-style: italic;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Throne and Liberty Day/Night Tracker</h1>
+        <h1>Throne and Liberty Cycle Tracker</h1>
         <div id="cycle-info">Current Cycle:</div>
         <div id="utc-time">UTC Time: </div>
         <div id="local-time">Local Time: </div>
-        <div id="timer-container">
-            <div id="timer-label"></div>
-            <div id="timer">00:00:00</div>
+        <div class="timer-container">
+            <div class="timer-label">Time until next phase:</div>
+            <div id="cycle-timer" class="timer">00:00:00</div>
         </div>
         <div id="phase">Loading...</div>
+        <h2>Co-Op Events</h2>
+        <div id="coop-info-utc" class="event-info">Next Co-Op Event (UTC):</div>
+        <div id="coop-info-local" class="event-info">Next Co-Op Event (Local):</div>
+        <div id="coop-countdown" class="timer-container">
+            <div class="timer-label">Time until next Co-Op Event:</div>
+            <div id="coop-timer" class="timer">00:00:00</div>
+        </div>
+        <div id="coop-start-countdown" class="timer-container hidden">
+            <div class="timer-label">Co-Op Event starts in:</div>
+            <div id="coop-start-timer" class="timer">00:00:00</div>
+        </div>
+        <div id="coop-remaining" class="timer-container hidden">
+            <div class="timer-label">Co-Op Event time remaining:</div>
+            <div id="coop-remaining-timer" class="timer">00:00:00</div>
+        </div>
+        <h2>Boss Spawns</h2>
+        <div id="boss-info-utc" class="event-info">Next Boss Spawn (UTC):</div>
+        <div id="boss-info-local" class="event-info">Next Boss Spawn (Local):</div>
+        <div class="timer-container">
+            <div class="timer-label">Time until next Boss Spawn:</div>
+            <div id="boss-timer" class="timer">00:00:00</div>
+        </div>
         <div id="credits">Brought to you by Okami and AmberMist</div>
     </div>
 
@@ -79,13 +107,19 @@
         const CYCLE_DURATION = 3 * 60 * 60; // 3 hours in seconds
         const DAY_DURATION = 2.5 * 60 * 60; // 2.5 hours in seconds
         const NIGHT_DURATION = CYCLE_DURATION - DAY_DURATION; // 30 minutes in seconds
+        const COOP_INTERVAL = 3 * 60 * 60; // 3 hours in seconds
+        const COOP_OFFSET = 2 * 60 * 60; // 2 hours offset from midnight UTC
+        const COOP_PREP_TIME = 5 * 60; // 5 minutes in seconds
+        const COOP_DURATION = 20 * 60; // 20 minutes in seconds
+        const BOSS_TIMES = [4, 16, 19, 23, 1].map(hour => hour * 60 * 60); // Updated Boss spawn times in UTC
 
-        function updateCycle() {
+        function updateTimers() {
             const now = new Date();
             const midnightUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
             const secondsSinceMidnight = (now - midnightUTC) / 1000;
+            
+            // Day/Night Cycle
             const cycleSeconds = secondsSinceMidnight % CYCLE_DURATION;
-
             let phase, timeLeft, nextPhase;
             if (cycleSeconds < DAY_DURATION) {
                 phase = "Day";
@@ -97,28 +131,71 @@
                 timeLeft = CYCLE_DURATION - cycleSeconds;
             }
 
-            const hours = Math.floor(timeLeft / 3600);
-            const minutes = Math.floor((timeLeft % 3600) / 60);
-            const seconds = Math.floor(timeLeft % 60);
-
-            document.getElementById('timer-label').textContent = `Time until ${nextPhase}:`;
-            document.getElementById('timer').textContent = 
-                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            updateTimer('cycle-timer', timeLeft);
             document.getElementById('phase').textContent = `Current Phase: ${phase}`;
             document.getElementById('phase').className = phase.toLowerCase();
 
             const cycleNumber = Math.floor(secondsSinceMidnight / CYCLE_DURATION) + 1;
             document.getElementById('cycle-info').textContent = `Current Cycle: ${cycleNumber}`;
 
-            // Update UTC time without date
-            document.getElementById('utc-time').textContent = `UTC Time: ${now.toUTCString().split(' ')[4]}`;
+            // Co-Op Events
+            const secondsSinceCoopStart = (secondsSinceMidnight - COOP_OFFSET + COOP_INTERVAL) % COOP_INTERVAL;
+            const timeUntilNextCoop = COOP_INTERVAL - secondsSinceCoopStart;
 
-            // Update local time without date
+            if (timeUntilNextCoop > COOP_PREP_TIME + COOP_DURATION) {
+                // Next Co-Op event countdown
+                updateTimer('coop-timer', timeUntilNextCoop);
+                document.getElementById('coop-countdown').classList.remove('hidden');
+                document.getElementById('coop-start-countdown').classList.add('hidden');
+                document.getElementById('coop-remaining').classList.add('hidden');
+
+                const nextCoopTime = new Date(now.getTime() + timeUntilNextCoop * 1000);
+                document.getElementById('coop-info-utc').textContent = `Next Co-Op Event (UTC): ${nextCoopTime.toUTCString().split(' ')[4]}`;
+                document.getElementById('coop-info-local').textContent = `Next Co-Op Event (Local): ${nextCoopTime.toLocaleTimeString()}`;
+            } else if (timeUntilNextCoop > COOP_DURATION) {
+                // Co-Op event preparation countdown
+                updateTimer('coop-start-timer', timeUntilNextCoop - COOP_DURATION);
+                document.getElementById('coop-countdown').classList.add('hidden');
+                document.getElementById('coop-start-countdown').classList.remove('hidden');
+                document.getElementById('coop-remaining').classList.add('hidden');
+
+                document.getElementById('coop-info-utc').textContent = `Co-Op Event starting soon`;
+                document.getElementById('coop-info-local').textContent = `Prepare for the event!`;
+            } else {
+                // Co-Op event in progress
+                updateTimer('coop-remaining-timer', timeUntilNextCoop);
+                document.getElementById('coop-countdown').classList.add('hidden');
+                document.getElementById('coop-start-countdown').classList.add('hidden');
+                document.getElementById('coop-remaining').classList.remove('hidden');
+
+                document.getElementById('coop-info-utc').textContent = `Co-Op Event in progress`;
+                document.getElementById('coop-info-local').textContent = `Participate now!`;
+            }
+
+            // Boss Spawns
+            const nextBossTime = BOSS_TIMES.find(time => time > secondsSinceMidnight) || BOSS_TIMES[0] + 24 * 60 * 60;
+            const timeUntilNextBoss = nextBossTime - secondsSinceMidnight;
+            updateTimer('boss-timer', timeUntilNextBoss);
+
+            const nextBossDate = new Date(now.getTime() + timeUntilNextBoss * 1000);
+            document.getElementById('boss-info-utc').textContent = `Next Boss Spawn (UTC): ${nextBossDate.toUTCString().split(' ')[4]}`;
+            document.getElementById('boss-info-local').textContent = `Next Boss Spawn (Local): ${nextBossDate.toLocaleTimeString()}`;
+
+            // Update UTC and local time
+            document.getElementById('utc-time').textContent = `UTC Time: ${now.toUTCString().split(' ')[4]}`;
             document.getElementById('local-time').textContent = `Local Time: ${now.toLocaleTimeString()}`;
         }
 
-        setInterval(updateCycle, 1000);
-        updateCycle(); // Initial call
+        function updateTimer(id, totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            document.getElementById(id).textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        setInterval(updateTimers, 1000);
+        updateTimers(); // Initial call
     </script>
 </body>
 </html>
