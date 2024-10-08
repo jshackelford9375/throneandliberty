@@ -3,199 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Throne and Liberty Day/Night Tracker</title>
+    <title>Throne and Liberty Time Tracker</title>
     <style>
         body {
-            font-family: 'Cinzel', serif;
-            background-color: #1a1a2e;
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
             color: #e0e0e0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-image: url('https://api.placeholder.com/800/600');
-            background-size: cover;
-            background-position: center;
             padding: 20px;
+            box-sizing: border-box;
         }
         .container {
-            text-align: center;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: #1e1e1e;
+            border-radius: 15px;
             padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+            max-width: 400px;
             width: 100%;
         }
-        h1, h2 {
+        h1 {
             color: #ffd700;
             margin-bottom: 1rem;
+            font-size: 1.8rem;
         }
-        #cycle-info, #utc-time, #local-time, .event-info {
+        .time-display {
             font-size: 1.2rem;
             margin-bottom: 0.5rem;
+            color: #b0b0b0;
         }
-        .timer-container {
+        .cycle-info, .event-info {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #d0d0d0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
             margin-bottom: 1rem;
         }
-        .timer-label {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+        .progress {
+            height: 100%;
+            background-color: #ffd700;
+            transition: width 1s linear;
         }
-        .timer {
-            font-size: 3rem;
-        }
-        #phase {
-            font-size: 2rem;
+        .time-period {
+            font-size: 1.4rem;
+            font-weight: bold;
             color: #ffd700;
             margin-bottom: 1rem;
         }
-        .night {
-            color: #9932cc;
-        }
-        .day {
-            color: #ffa500;
-        }
-        #credits {
-            font-size: 0.9rem;
-            margin-top: 1rem;
-            font-style: italic;
-        }
-        .hidden {
-            display: none;
+        .section {
+            margin-bottom: 2rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Throne and Liberty Day/Night Tracker</h1>
-        <div id="cycle-info">Current Cycle:</div>
-        <div id="utc-time">UTC Time: </div>
-        <div id="local-time">Local Time: </div>
-        <div class="timer-container">
-            <div class="timer-label">Time until next phase:</div>
-            <div id="cycle-timer" class="timer">00:00:00</div>
+        <h1>Throne and Liberty Time Tracker</h1>
+        <div class="time-display" id="currentTimeUTC"></div>
+        <div class="time-display" id="currentTimeLocal"></div>
+        <div class="section">
+            <div class="time-period" id="timePeriod"></div>
+            <div class="cycle-info" id="cycleInfo"></div>
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
         </div>
-        <div id="phase">Loading...</div>
-        <h2>Co-Op Events</h2>
-        <div id="coop-info-utc" class="event-info">Next Co-Op Event (UTC):</div>
-        <div id="coop-info-local" class="event-info">Next Co-Op Event (Local):</div>
-        <div id="coop-countdown" class="timer-container">
-            <div class="timer-label">Time until next Co-Op Event:</div>
-            <div id="coop-timer" class="timer">00:00:00</div>
+        <div class="section">
+            <div class="time-period" id="worldEventStatus"></div>
+            <div class="event-info" id="worldEventInfo"></div>
+            <div class="progress-bar">
+                <div class="progress" id="worldEventProgressBar"></div>
+            </div>
         </div>
-        <div id="coop-start-countdown" class="timer-container hidden">
-            <div class="timer-label">Co-Op Event starts in:</div>
-            <div id="coop-start-timer" class="timer">00:00:00</div>
+        <div class="section">
+            <div class="time-period" id="worldBossStatus"></div>
+            <div class="event-info" id="worldBossInfo"></div>
+            <div class="progress-bar">
+                <div class="progress" id="worldBossProgressBar"></div>
+            </div>
         </div>
-        <div id="coop-remaining" class="timer-container hidden">
-            <div class="timer-label">Co-Op Event time remaining:</div>
-            <div id="coop-remaining-timer" class="timer">00:00:00</div>
-        </div>
-        <h2>Boss Spawns</h2>
-        <div id="boss-info-utc" class="event-info">Next Boss Spawn (UTC):</div>
-        <div id="boss-info-local" class="event-info">Next Boss Spawn (Local):</div>
-        <div class="timer-container">
-            <div class="timer-label">Time until next Boss Spawn:</div>
-            <div id="boss-timer" class="timer">00:00:00</div>
-        </div>
-        <div id="credits">Brought to you by Okami and AmberMist</div>
     </div>
 
     <script>
-        const CYCLE_DURATION = 3 * 60 * 60; // 3 hours in seconds
-        const DAY_DURATION = 2.5 * 60 * 60; // 2.5 hours in seconds
-        const NIGHT_DURATION = CYCLE_DURATION - DAY_DURATION; // 30 minutes in seconds
-        const COOP_INTERVAL = 3 * 60 * 60; // 3 hours in seconds
-        const COOP_OFFSET = 2 * 60 * 60; // 2 hours offset from midnight UTC
-        const COOP_PREP_TIME = 5 * 60; // 5 minutes in seconds
-        const COOP_DURATION = 20 * 60; // 20 minutes in seconds
-        const BOSS_TIMES = [4, 16, 19, 23, 1].map(hour => hour * 60 * 60); // Updated Boss spawn times in UTC
-
-        function updateTimers() {
-            const now = new Date();
-            const midnightUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-            const secondsSinceMidnight = (now - midnightUTC) / 1000;
-            
-            // Day/Night Cycle
-            const cycleSeconds = secondsSinceMidnight % CYCLE_DURATION;
-            let phase, timeLeft, nextPhase;
-            if (cycleSeconds < DAY_DURATION) {
-                phase = "Day";
-                nextPhase = "Night";
-                timeLeft = DAY_DURATION - cycleSeconds;
-            } else {
-                phase = "Night";
-                nextPhase = "Day";
-                timeLeft = CYCLE_DURATION - cycleSeconds;
-            }
-
-            updateTimer('cycle-timer', timeLeft);
-            document.getElementById('phase').textContent = `Current Phase: ${phase}`;
-            document.getElementById('phase').className = phase.toLowerCase();
-
-            const cycleNumber = Math.floor(secondsSinceMidnight / CYCLE_DURATION) + 1;
-            document.getElementById('cycle-info').textContent = `Current Cycle: ${cycleNumber}`;
-
-            // Co-Op Events
-            const secondsSinceCoopStart = (secondsSinceMidnight - COOP_OFFSET + COOP_INTERVAL) % COOP_INTERVAL;
-            const timeUntilNextCoop = COOP_INTERVAL - secondsSinceCoopStart;
-
-            if (timeUntilNextCoop > COOP_PREP_TIME + COOP_DURATION) {
-                // Next Co-Op event countdown
-                updateTimer('coop-timer', timeUntilNextCoop);
-                document.getElementById('coop-countdown').classList.remove('hidden');
-                document.getElementById('coop-start-countdown').classList.add('hidden');
-                document.getElementById('coop-remaining').classList.add('hidden');
-
-                const nextCoopTime = new Date(now.getTime() + timeUntilNextCoop * 1000);
-                document.getElementById('coop-info-utc').textContent = `Next Co-Op Event (UTC): ${nextCoopTime.toUTCString().split(' ')[4]}`;
-                document.getElementById('coop-info-local').textContent = `Next Co-Op Event (Local): ${nextCoopTime.toLocaleTimeString()}`;
-            } else if (timeUntilNextCoop > COOP_DURATION) {
-                // Co-Op event preparation countdown
-                updateTimer('coop-start-timer', timeUntilNextCoop - COOP_DURATION);
-                document.getElementById('coop-countdown').classList.add('hidden');
-                document.getElementById('coop-start-countdown').classList.remove('hidden');
-                document.getElementById('coop-remaining').classList.add('hidden');
-
-                document.getElementById('coop-info-utc').textContent = `Co-Op Event starting soon`;
-                document.getElementById('coop-info-local').textContent = `Prepare for the event!`;
-            } else {
-                // Co-Op event in progress
-                updateTimer('coop-remaining-timer', timeUntilNextCoop);
-                document.getElementById('coop-countdown').classList.add('hidden');
-                document.getElementById('coop-start-countdown').classList.add('hidden');
-                document.getElementById('coop-remaining').classList.remove('hidden');
-
-                document.getElementById('coop-info-utc').textContent = `Co-Op Event in progress`;
-                document.getElementById('coop-info-local').textContent = `Participate now!`;
-            }
-
-            // Boss Spawns
-            const nextBossTime = BOSS_TIMES.find(time => time > secondsSinceMidnight) || BOSS_TIMES[0] + 24 * 60 * 60;
-            const timeUntilNextBoss = nextBossTime - secondsSinceMidnight;
-            updateTimer('boss-timer', timeUntilNextBoss);
-
-            const nextBossDate = new Date(now.getTime() + timeUntilNextBoss * 1000);
-            document.getElementById('boss-info-utc').textContent = `Next Boss Spawn (UTC): ${nextBossDate.toUTCString().split(' ')[4]}`;
-            document.getElementById('boss-info-local').textContent = `Next Boss Spawn (Local): ${nextBossDate.toLocaleTimeString()}`;
-
-            // Update UTC and local time
-            document.getElementById('utc-time').textContent = `UTC Time: ${now.toUTCString().split(' ')[4]}`;
-            document.getElementById('local-time').textContent = `Local Time: ${now.toLocaleTimeString()}`;
-        }
-
-        function updateTimer(id, totalSeconds) {
+        function formatTime(totalSeconds) {
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = Math.floor(totalSeconds % 60);
-            document.getElementById(id).textContent = 
-                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        setInterval(updateTimers, 1000);
-        updateTimers(); // Initial call
+        function getNextEventTime(now) {
+            const eventInterval = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+            const baseTime = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 1, 0, 0, 0));
+            while (baseTime <= now) {
+                baseTime.setTime(baseTime.getTime() + eventInterval);
+            }
+            return baseTime;
+        }
+
+        function getNextWorldBossTime(now) {
+            const bossTimes = [0, 2, 5, 17, 20]; // UTC hours
+            const currentHour = now.getUTCHours();
+            const currentMinute = now.getUTCMinutes();
+            let nextBossHour = bossTimes.find(hour => hour > currentHour) || bossTimes[0];
+            let nextBossDay = now.getUTCDate();
+            
+            if (nextBossHour <= currentHour || (nextBossHour === currentHour && currentMinute > 0)) {
+                nextBossDay += 1;
+            }
+            
+            return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), nextBossDay, nextBossHour, 0, 0, 0));
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const currentTimeUTC = now.toUTCString();
+            const currentTimeLocal = now.toLocaleString();
+            document.getElementById('currentTimeUTC').textContent = `Current Time (UTC): ${currentTimeUTC}`;
+            document.getElementById('currentTimeLocal').textContent = `Local Time: ${currentTimeLocal}`;
+
+            // Day/Night cycle
+            const midnight = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+            const secondsSinceMidnight = (now - midnight) / 1000;
+            const cycleSeconds = 7200; // 2 hours (1.5 hours day + 0.5 hours night)
+            const daySeconds = 5400; // 1.5 hours
+            const nightSeconds = 1800; // 30 minutes
+
+            const cycleProgress = (secondsSinceMidnight % cycleSeconds) / cycleSeconds;
+            const isDay = cycleProgress < (daySeconds / cycleSeconds);
+
+            // Update day/night progress bar
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = `${cycleProgress * 100}%`;
+
+            // Update time period
+            const timePeriod = document.getElementById('timePeriod');
+            timePeriod.textContent = isDay ? 'Day Time' : 'Night Time';
+
+            // Update cycle info
+            const cycleInfo = document.getElementById('cycleInfo');
+            const currentCycleSecond = Math.floor(cycleProgress * cycleSeconds);
+            const remainingSeconds = isDay ? daySeconds - currentCycleSecond : nightSeconds - (currentCycleSecond - daySeconds);
+            cycleInfo.textContent = `Remaining time: ${formatTime(remainingSeconds)}`;
+
+            // World Event
+            const nextEventTime = getNextEventTime(now);
+            const timeTillNextEvent = (nextEventTime - now) / 1000;
+            const worldEventStatus = document.getElementById('worldEventStatus');
+            const worldEventInfo = document.getElementById('worldEventInfo');
+            const worldEventProgressBar = document.getElementById('worldEventProgressBar');
+
+            if (timeTillNextEvent > 1500) { // More than 25 minutes till next event
+                worldEventStatus.textContent = 'Next World Event';
+                worldEventInfo.textContent = `Starts in: ${formatTime(timeTillNextEvent)}`;
+                worldEventProgressBar.style.width = '0%';
+            } else { // Event is ongoing
+                const remainingEventTime = 1500 - (10800 - timeTillNextEvent);
+                worldEventStatus.textContent = 'World Event Ongoing';
+                worldEventInfo.textContent = `Ends in: ${formatTime(remainingEventTime)}`;
+                worldEventProgressBar.style.width = `${((1500 - remainingEventTime) / 1500) * 100}%`;
+            }
+
+            // World Boss
+            const nextWorldBossTime = getNextWorldBossTime(now);
+            const timeTillNextWorldBoss = (nextWorldBossTime - now) / 1000;
+            const worldBossStatus = document.getElementById('worldBossStatus');
+            const worldBossInfo = document.getElementById('worldBossInfo');
+            const worldBossProgressBar = document.getElementById('worldBossProgressBar');
+
+            worldBossStatus.textContent = 'Next World Boss';
+            worldBossInfo.textContent = `Spawns in: ${formatTime(timeTillNextWorldBoss)}`;
+            worldBossProgressBar.style.width = '0%';
+
+            // Schedule next update
+            setTimeout(updateTime, 1000);
+        }
+
+        updateTime();
     </script>
 </body>
 </html>
