@@ -88,12 +88,11 @@
     </style>
 </head>
 <body>
-    <h1>Resource Tracker (20-Min Spawns)</h1>
+    <h1>Gatekeeping is Stupid</h1>
     
     <div class="container">
         <div class="timer-container">
-            <div>Your Local Time: <span id="local-time"></span></div>
-            <div>CST Time: <span id="cst-time"></span></div>
+            <div>Current Time: <span id="local-time"></span></div>
             <div>Next Spawn: <span id="countdown" class="countdown"></span></div>
         </div>
         
@@ -273,7 +272,7 @@
         function findResources() {
             const now = new Date();
             
-            // Format for local time display
+            // Format for local time display - show user's local time
             const localFormatter = new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: 'numeric',
@@ -281,86 +280,58 @@
                 hour12: true
             });
             
-            // Format for CST time display
-            const cstFormatter = new Intl.DateTimeFormat('en-US', {
+            // Time formatter without seconds for resource displays
+            const timeFormatter = new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                hour12: true,
-                timeZone: 'America/Chicago' // CST time zone
+                minute: '2-digit',
+                hour12: true
             });
             
             document.getElementById('local-time').textContent = localFormatter.format(now);
-            document.getElementById('cst-time').textContent = cstFormatter.format(now);
             
-            // Get the current time in CST
-            const cstNow = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Chicago"}));
+            // Get the current time in CST (for calculations only)
+            const cstNow = new Date(now.toLocaleString("en-US", {timeZone: "America/Chicago"}));
             
             // First, get the current hour and minute in CST
             const cstHour = cstNow.getHours();
             const cstMinute = cstNow.getMinutes();
             
-            // Find which 20-minute block we're in
-            const timeBlocks = [
-                {hour: 1, minute: 0}, {hour: 1, minute: 20}, {hour: 1, minute: 40},
-                {hour: 2, minute: 0}, {hour: 2, minute: 20}, {hour: 2, minute: 40},
-                {hour: 3, minute: 0}, {hour: 3, minute: 20}, {hour: 3, minute: 40},
-                {hour: 4, minute: 0}, {hour: 4, minute: 20}, {hour: 4, minute: 40},
-                {hour: 5, minute: 0}, {hour: 5, minute: 20}, {hour: 5, minute: 40},
-                {hour: 6, minute: 0}, {hour: 6, minute: 20}, {hour: 6, minute: 40},
-                {hour: 7, minute: 0}, {hour: 7, minute: 20}, {hour: 7, minute: 40},
-                {hour: 8, minute: 0}, {hour: 8, minute: 20}, {hour: 8, minute: 40},
-                {hour: 9, minute: 0}, {hour: 9, minute: 20}, {hour: 9, minute: 40},
-                {hour: 10, minute: 0}, {hour: 10, minute: 20}, {hour: 10, minute: 40},
-                {hour: 11, minute: 0}, {hour: 11, minute: 20}, {hour: 11, minute: 40},
-                {hour: 12, minute: 0}, {hour: 12, minute: 20}, {hour: 12, minute: 40},
-                // PM hours are same as AM but +12 except for 12 PM
-                {hour: 13, minute: 0}, {hour: 13, minute: 20}, {hour: 13, minute: 40},
-                {hour: 14, minute: 0}, {hour: 14, minute: 20}, {hour: 14, minute: 40},
-                {hour: 15, minute: 0}, {hour: 15, minute: 20}, {hour: 15, minute: 40},
-                {hour: 16, minute: 0}, {hour: 16, minute: 20}, {hour: 16, minute: 40},
-                {hour: 17, minute: 0}, {hour: 17, minute: 20}, {hour: 17, minute: 40},
-                {hour: 18, minute: 0}, {hour: 18, minute: 20}, {hour: 18, minute: 40},
-                {hour: 19, minute: 0}, {hour: 19, minute: 20}, {hour: 19, minute: 40},
-                {hour: 20, minute: 0}, {hour: 20, minute: 20}, {hour: 20, minute: 40},
-                {hour: 21, minute: 0}, {hour: 21, minute: 20}, {hour: 21, minute: 40},
-                {hour: 22, minute: 0}, {hour: 22, minute: 20}, {hour: 22, minute: 40},
-                {hour: 23, minute: 0}, {hour: 23, minute: 20}, {hour: 23, minute: 40},
-                {hour: 0, minute: 0}, {hour: 0, minute: 20}, {hour: 0, minute: 40}
-            ];
-            
-            // Function to check if current time is after a time block
-            function isTimeAfter(hour, minute, blockHour, blockMinute) {
-                return (hour > blockHour) || (hour === blockHour && minute >= blockMinute);
+            // Each spawn is at XX:00, XX:20, and XX:40 of each hour
+            // Calculate which 20-minute time block we're currently in
+            let currentBlockMinute;
+            if (cstMinute < 20) {
+                currentBlockMinute = 0;
+            } else if (cstMinute < 40) {
+                currentBlockMinute = 20;
+            } else {
+                currentBlockMinute = 40;
             }
             
-            // Find current time block
-            let currentTimeBlockIndex = 0;
-            for (let i = 0; i < timeBlocks.length; i++) {
-                const nextBlockIndex = (i + 1) % timeBlocks.length;
-                const currentBlock = timeBlocks[i];
-                const nextBlock = timeBlocks[nextBlockIndex];
-                
-                // Handle the case where we're crossing midnight
-                if (nextBlock.hour < currentBlock.hour) {
-                    if (isTimeAfter(cstHour, cstMinute, currentBlock.hour, currentBlock.minute) || 
-                        !isTimeAfter(cstHour, cstMinute, nextBlock.hour, nextBlock.minute)) {
-                        currentTimeBlockIndex = i;
-                        break;
-                    }
-                } else {
-                    if (isTimeAfter(cstHour, cstMinute, currentBlock.hour, currentBlock.minute) && 
-                        !isTimeAfter(cstHour, cstMinute, nextBlock.hour, nextBlock.minute)) {
-                        currentTimeBlockIndex = i;
-                        break;
-                    }
-                }
+            // Calculate next block
+            let nextBlockHour = cstHour;
+            let nextBlockMinute = currentBlockMinute + 20;
+            if (nextBlockMinute >= 60) {
+                nextBlockMinute = 0;
+                nextBlockHour = (cstHour + 1) % 24;
             }
             
-            // Determine resource locations based on the cycle pattern
-            // The pattern is Seal Sanctuary → Shrine of Devotion → Arkeum → Orc Village → repeat
-            // Each location lasts for 1 hour (3 x 20 minute blocks)
-            const hourBlock = Math.floor(currentTimeBlockIndex / 3) % 4;
+            // Calculate previous block
+            let prevBlockHour = cstHour;
+            let prevBlockMinute = currentBlockMinute - 20;
+            if (prevBlockMinute < 0) {
+                prevBlockMinute = 40;
+                prevBlockHour = (cstHour - 1 + 24) % 24;
+            }
+            
+            // Determine hour block for the patterns (each location lasts for 1 hour)
+            // Convert 24-hour format to pattern index (0-3)
+            const hourBlock = Math.floor(((cstHour % 12) + (cstHour >= 12 ? 0 : 12)) / 3) % 4;
+            
+            // Patterns repeat every 4 hours
+            // Hour 1, 5, 9: Seal Sanctuary chests, Shrine of Devotion mining
+            // Hour 2, 6, 10: Shrine of Devotion chests, Arkeum mining
+            // Hour 3, 7, 11: Arkeum chests, Orc Village mining
+            // Hour 4, 8, 12: Orc Village chests, Seal Sanctuary mining
             
             let currentChest, currentMining;
             if (hourBlock === 0) {
@@ -377,18 +348,17 @@
                 currentMining = "Seal Sanctuary";
             }
             
-            // Calculate next time block index
-            const nextTimeBlockIndex = (currentTimeBlockIndex + 1) % timeBlocks.length;
-            
             // Determine if we're changing locations in the next time block
-            const nextHourBlock = Math.floor(nextTimeBlockIndex / 3) % 4;
+            const nextHourBlock = (nextBlockHour !== cstHour) ? 
+                (Math.floor(((nextBlockHour % 12) + (nextBlockHour >= 12 ? 0 : 12)) / 3) % 4) : 
+                hourBlock;
+                
             const isLocationChange = nextHourBlock !== hourBlock;
             
-            // Determine next spawn locations (same location for 20-min blocks within the hour)
+            // Determine next locations
             let nextChest = currentChest;
             let nextMining = currentMining;
             
-            // If we're changing hour blocks, update the next locations
             if (isLocationChange) {
                 if (nextHourBlock === 0) {
                     nextChest = "Seal Sanctuary";
@@ -405,18 +375,17 @@
                 }
             }
             
-            // Calculate previous time block index
-            const prevTimeBlockIndex = (currentTimeBlockIndex - 1 + timeBlocks.length) % timeBlocks.length;
-            
-            // Determine if we came from a different location in the previous time block
-            const prevHourBlock = Math.floor(prevTimeBlockIndex / 3) % 4;
+            // Determine if the previous block was a different location
+            const prevHourBlock = (prevBlockHour !== cstHour) ?
+                (Math.floor(((prevBlockHour % 12) + (prevBlockHour >= 12 ? 0 : 12)) / 3) % 4) :
+                hourBlock;
+                
             const wasPrevLocationDifferent = prevHourBlock !== hourBlock;
             
-            // Determine previous spawn locations (default to same location)
+            // Determine previous locations
             let prevChest = currentChest;
             let prevMining = currentMining;
             
-            // If we changed locations in the previous block, determine the previous locations
             if (wasPrevLocationDifferent) {
                 if (prevHourBlock === 0) {
                     prevChest = "Seal Sanctuary";
@@ -433,24 +402,26 @@
                 }
             }
             
-            // Format time block to display
-            const formatTimeBlock = (block) => {
-                let hour = block.hour;
-                const minute = block.minute;
-                const period = hour >= 12 ? 'PM' : 'AM';
+            // Convert CST block times to local display times
+            const formatTimeBlock = (hour, minute) => {
+                // Create a date in CST timezone
+                const blockDate = new Date();
+                blockDate.setHours(0, 0, 0, 0); // Reset to start of day
+                blockDate.setHours(hour, minute, 0); // Set to the CST block time
                 
-                // Convert to 12-hour format
-                if (hour > 12) hour -= 12;
-                else if (hour === 0) hour = 12;
+                // Convert CST time to local time for display
+                const localBlockDate = new Date(blockDate.toLocaleString("en-US", {timeZone: "America/Chicago"}));
                 
-                return `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
+                // Format time for display (hours and minutes only, no seconds)
+                return timeFormatter.format(localBlockDate);
             };
             
-            const prevBlockTime = formatTimeBlock(timeBlocks[prevTimeBlockIndex]);
-            const currentBlockTime = formatTimeBlock(timeBlocks[currentTimeBlockIndex]);
-            const nextBlockTime = formatTimeBlock(timeBlocks[nextTimeBlockIndex]);
+            // Create display times in user's local time
+            const prevBlockTime = formatTimeBlock(prevBlockHour, prevBlockMinute);
+            const currentBlockTime = formatTimeBlock(cstHour, currentBlockMinute);
+            const nextBlockTime = formatTimeBlock(nextBlockHour, nextBlockMinute);
             
-            // Create mock resource objects for display
+            // Create resource objects for display
             const prevResource = { chest: prevChest, mining: prevMining, time: prevBlockTime };
             const currentResource = { chest: currentChest, mining: currentMining, time: currentBlockTime };
             const nextResource = { chest: nextChest, mining: nextMining, time: nextBlockTime };
@@ -459,28 +430,27 @@
             updateResourceDisplay('chest', prevResource, currentResource, nextResource);
             updateResourceDisplay('mining', prevResource, currentResource, nextResource);
             
-            // Calculate time for the next spawn
-            // Next spawn is always at the next 20-minute block
-            const nextBlockHour = timeBlocks[nextTimeBlockIndex].hour;
-            const nextBlockMinute = timeBlocks[nextTimeBlockIndex].minute;
+            // Create a Date object for the next spawn time in CST
+            const nextSpawnCST = new Date();
+            nextSpawnCST.setHours(0, 0, 0, 0); // Reset to start of day
+            nextSpawnCST.setHours(nextBlockHour, nextBlockMinute, 0); // Set to next spawn time
             
-            // Create a date for the next spawn
-            const nextSpawnDate = new Date(cstNow);
+            // Calculate the time difference
+            let timeDiff = nextSpawnCST - cstNow;
             
-            // If we're already past the time for the next block in the current day,
-            // we need to add a day to get the correct next spawn time
-            if (cstHour > nextBlockHour || (cstHour === nextBlockHour && cstMinute >= nextBlockMinute)) {
-                nextSpawnDate.setDate(nextSpawnDate.getDate() + 1);
+            // If the result is negative, it means the next spawn is tomorrow
+            if (timeDiff < 0) {
+                nextSpawnCST.setDate(nextSpawnCST.getDate() + 1);
+                timeDiff = nextSpawnCST - cstNow;
             }
             
-            // Set the hours and minutes for the next spawn
-            nextSpawnDate.setHours(nextBlockHour, nextBlockMinute, 0, 0);
+            // Convert to minutes and seconds
+            const minutes = Math.floor(timeDiff / (60 * 1000));
+            const seconds = Math.floor((timeDiff % (60 * 1000)) / 1000);
             
-            // Convert from CST to local time
-            const nextSpawnLocalDate = new Date(nextSpawnDate.toLocaleString("en-US", {timeZone: "America/Chicago"}));
-            
-            // Update countdown to next spawn
-            updateCountdown(nextSpawnLocalDate);
+            // Update countdown directly
+            document.getElementById('countdown').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
             // Update last updated time
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
