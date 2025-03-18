@@ -280,11 +280,12 @@
                 hour12: true
             });
             
-            // Time formatter without seconds for resource displays
+            // Time formatter without seconds for resource displays - fixed to CST time
             const timeFormatter = new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'America/Chicago'  // Always use CST for the display times
             });
             
             document.getElementById('local-time').textContent = localFormatter.format(now);
@@ -325,13 +326,13 @@
             
             // Determine hour block for the patterns (each location lasts for 1 hour)
             // Convert 24-hour format to pattern index (0-3)
-            const hourBlock = Math.floor(((cstHour % 12) + (cstHour >= 12 ? 0 : 12)) / 3) % 4;
+            const hourBlock = Math.floor(cstHour / 3) % 4;
             
             // Patterns repeat every 4 hours
-            // Hour 1, 5, 9: Seal Sanctuary chests, Shrine of Devotion mining
-            // Hour 2, 6, 10: Shrine of Devotion chests, Arkeum mining
-            // Hour 3, 7, 11: Arkeum chests, Orc Village mining
-            // Hour 4, 8, 12: Orc Village chests, Seal Sanctuary mining
+            // Hour 0-2, 12-14: Seal Sanctuary chests, Shrine of Devotion mining
+            // Hour 3-5, 15-17: Shrine of Devotion chests, Arkeum mining
+            // Hour 6-8, 18-20: Arkeum chests, Orc Village mining
+            // Hour 9-11, 21-23: Orc Village chests, Seal Sanctuary mining
             
             let currentChest, currentMining;
             if (hourBlock === 0) {
@@ -349,10 +350,7 @@
             }
             
             // Determine if we're changing locations in the next time block
-            const nextHourBlock = (nextBlockHour !== cstHour) ? 
-                (Math.floor(((nextBlockHour % 12) + (nextBlockHour >= 12 ? 0 : 12)) / 3) % 4) : 
-                hourBlock;
-                
+            const nextHourBlock = Math.floor(nextBlockHour / 3) % 4;
             const isLocationChange = nextHourBlock !== hourBlock;
             
             // Determine next locations
@@ -376,10 +374,7 @@
             }
             
             // Determine if the previous block was a different location
-            const prevHourBlock = (prevBlockHour !== cstHour) ?
-                (Math.floor(((prevBlockHour % 12) + (prevBlockHour >= 12 ? 0 : 12)) / 3) % 4) :
-                hourBlock;
-                
+            const prevHourBlock = Math.floor(prevBlockHour / 3) % 4;
             const wasPrevLocationDifferent = prevHourBlock !== hourBlock;
             
             // Determine previous locations
@@ -402,24 +397,20 @@
                 }
             }
             
-            // Convert CST block times to local display times
-            const formatTimeBlock = (hour, minute) => {
-                // Create a date in CST timezone
-                const blockDate = new Date();
-                blockDate.setHours(0, 0, 0, 0); // Reset to start of day
-                blockDate.setHours(hour, minute, 0); // Set to the CST block time
+            // Create CST time strings for display
+            const formatCSTTime = (hour, minute) => {
+                // Convert to 12-hour format
+                let displayHour = hour % 12;
+                if (displayHour === 0) displayHour = 12;
+                const period = hour >= 12 ? 'PM' : 'AM';
                 
-                // Convert CST time to local time for display
-                const localBlockDate = new Date(blockDate.toLocaleString("en-US", {timeZone: "America/Chicago"}));
-                
-                // Format time for display (hours and minutes only, no seconds)
-                return timeFormatter.format(localBlockDate);
+                return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
             };
             
-            // Create display times in user's local time
-            const prevBlockTime = formatTimeBlock(prevBlockHour, prevBlockMinute);
-            const currentBlockTime = formatTimeBlock(cstHour, currentBlockMinute);
-            const nextBlockTime = formatTimeBlock(nextBlockHour, nextBlockMinute);
+            // Use CST times for display
+            const prevBlockTime = formatCSTTime(prevBlockHour, prevBlockMinute);
+            const currentBlockTime = formatCSTTime(cstHour, currentBlockMinute);
+            const nextBlockTime = formatCSTTime(nextBlockHour, nextBlockMinute);
             
             // Create resource objects for display
             const prevResource = { chest: prevChest, mining: prevMining, time: prevBlockTime };
@@ -432,16 +423,16 @@
             
             // Create a Date object for the next spawn time in CST
             const nextSpawnCST = new Date();
-            nextSpawnCST.setHours(0, 0, 0, 0); // Reset to start of day
-            nextSpawnCST.setHours(nextBlockHour, nextBlockMinute, 0); // Set to next spawn time
+            nextSpawnCST.setTime(cstNow.getTime()); // Start with current CST time
+            nextSpawnCST.setHours(nextBlockHour, nextBlockMinute, 0, 0); // Set to next spawn time
             
             // Calculate the time difference
-            let timeDiff = nextSpawnCST - cstNow;
+            let timeDiff = nextSpawnCST.getTime() - cstNow.getTime();
             
             // If the result is negative, it means the next spawn is tomorrow
             if (timeDiff < 0) {
                 nextSpawnCST.setDate(nextSpawnCST.getDate() + 1);
-                timeDiff = nextSpawnCST - cstNow;
+                timeDiff = nextSpawnCST.getTime() - cstNow.getTime();
             }
             
             // Convert to minutes and seconds
