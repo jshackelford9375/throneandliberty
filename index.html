@@ -308,7 +308,7 @@
                 currentBlockMinute = 40;
             }
             
-            // Calculate next block
+            // Calculate next block (time blocks of 20 minutes)
             let nextBlockHour = cstHour;
             let nextBlockMinute = currentBlockMinute + 20;
             if (nextBlockMinute >= 60) {
@@ -421,12 +421,24 @@
             updateResourceDisplay('chest', prevResource, currentResource, nextResource);
             updateResourceDisplay('mining', prevResource, currentResource, nextResource);
             
-            // Create a Date object for the next spawn time in CST
-            const nextSpawnCST = new Date();
-            nextSpawnCST.setTime(cstNow.getTime()); // Start with current CST time
-            nextSpawnCST.setHours(nextBlockHour, nextBlockMinute, 0, 0); // Set to next spawn time
+            // Next spawn is every 20 minutes, so it should be the next XX:00, XX:20, or XX:40
+            let nextMinute;
+            if (cstMinute < 20) {
+                nextMinute = 20;
+                nextBlockHour = cstHour;
+            } else if (cstMinute < 40) {
+                nextMinute = 40;
+                nextBlockHour = cstHour;
+            } else {
+                nextMinute = 0;
+                nextBlockHour = (cstHour + 1) % 24;
+            }
             
-            // Calculate the time difference
+            // Create a Date object for the next spawn time in CST
+            const nextSpawnCST = new Date(cstNow);
+            nextSpawnCST.setHours(nextBlockHour, nextMinute, 0, 0);
+            
+            // Calculate the time difference in milliseconds
             let timeDiff = nextSpawnCST.getTime() - cstNow.getTime();
             
             // If the result is negative, it means the next spawn is tomorrow
@@ -435,13 +447,8 @@
                 timeDiff = nextSpawnCST.getTime() - cstNow.getTime();
             }
             
-            // Convert to minutes and seconds
-            const minutes = Math.floor(timeDiff / (60 * 1000));
-            const seconds = Math.floor((timeDiff % (60 * 1000)) / 1000);
-            
-            // Update countdown directly
-            document.getElementById('countdown').textContent = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            // Update the countdown
+            updateCountdown();
             
             // Update last updated time
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
@@ -460,32 +467,59 @@
         }
         
         // Function to update the countdown timer
-        function updateCountdown(nextTime) {
+        function updateCountdown() {
             const now = new Date();
-            let diff = nextTime - now;
             
-            // If the next time is in the past, add 24 hours
+            // Get the current time in CST
+            const cstNow = new Date(now.toLocaleString("en-US", {timeZone: "America/Chicago"}));
+            
+            // Get the current minutes in CST
+            const cstMinute = cstNow.getMinutes();
+            const cstHour = cstNow.getHours();
+            
+            // Calculate next spawn time (always at XX:00, XX:20, or XX:40)
+            let nextSpawnHour = cstHour;
+            let nextSpawnMinute;
+            
+            if (cstMinute < 20) {
+                nextSpawnMinute = 20;
+            } else if (cstMinute < 40) {
+                nextSpawnMinute = 40;
+            } else {
+                nextSpawnMinute = 0;
+                nextSpawnHour = (cstHour + 1) % 24;
+            }
+            
+            // Create a date for the next spawn
+            const nextSpawn = new Date(cstNow);
+            nextSpawn.setHours(nextSpawnHour, nextSpawnMinute, 0, 0);
+            
+            // Calculate difference in milliseconds
+            let diff = nextSpawn - cstNow;
+            
+            // If the difference is negative, it means the next spawn is tomorrow
             if (diff < 0) {
-                diff = diff + (24 * 60 * 60 * 1000);
+                nextSpawn.setDate(nextSpawn.getDate() + 1);
+                diff = nextSpawn - cstNow;
             }
             
             // Calculate minutes and seconds
             const minutes = Math.floor(diff / (60 * 1000));
             const seconds = Math.floor((diff % (60 * 1000)) / 1000);
             
-            // Format the countdown display to always show two digits
+            // Display the countdown
             document.getElementById('countdown').textContent = 
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Add a label to indicate what's changing
-            document.getElementById('countdown').title = `Next location change at ${nextTime.toLocaleTimeString()}`;
         }
         
         // Initial update
         findResources();
         
-        // Update every second
-        setInterval(findResources, 1000);
+        // Update the countdown timer every second
+        setInterval(updateCountdown, 1000);
+        
+        // Update resources every 20 seconds
+        setInterval(findResources, 20000);
     </script>
 </body>
 </html>
