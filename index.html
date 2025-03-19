@@ -206,51 +206,41 @@
             
             // Track the current position in the rotation
             let currentIndex = referenceIndex;
-            let currentHour = 21; // 9PM UTC (4PM CST)
-            let currentDate = new Date(referenceDate);
+            
+            // For tracking purposes, we'll use a counter to know which hour we're in
+            let elapsedHourCounter = 0;
             
             // Step through each hour from reference to target date/time
             for (let hour = 0; hour < hoursElapsed; hour++) {
-                // Advance one hour
-                currentHour++;
-                if (currentHour === 24) {
-                    currentHour = 0;
-                    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-                }
+                elapsedHourCounter++;
                 
-                // Convert UTC hour to CST hour (UTC-5 or UTC-6 depending on DST)
-                // For simplicity and because spawn patterns repeat, we'll just use UTC hour % 24
-                // This gives us the same daily pattern regardless of time zone
-                const effectiveHour = currentHour % 24;
+                // CST hour pattern - This calculation is only to detect the pattern rhythm
+                // 0 = 5 = 10 = 15 = 20: Arkeum > Orc Village
+                // 1 = 6 = 11 = 16 = 21: Orc Village > Seal Sanctuary
+                // 2 = 7 = 12 = 17 = 22: Seal Sanctuary > Shrine of Devotion
+                // 3 = 8 = 13 = 18 = 23: Shrine of Devotion > Arkeum
+                // Special cases: 7 and 9 repeat the previous
                 
-                // Check if we're at 7PM or 9PM CST equivalent in UTC
-                // 7PM CST = 0:00 UTC (midnight) during standard time, 1:00 UTC during DST
-                // 9PM CST = 2:00 UTC during standard time, 3:00 UTC during DST
-                // We'll simplify and check for hours 0/1 and 2/3
-                if (effectiveHour === 0 || effectiveHour === 1 || effectiveHour === 2 || effectiveHour === 3) {
-                    // These are equivalent to 7PM and 9PM CST - check if it matches the pattern
-                    // 7PM repeats 6PM (24-1=23 or 24-2=22 UTC)
-                    // 9PM repeats 8PM (24-3=21 or 24-4=20 UTC)
-                    if ((effectiveHour === 0 || effectiveHour === 1) && 
-                        (currentIndex === rotationOrder.findIndex(loc => 
-                            loc.chests === "Seal Sanctuary" && loc.mining === "Shrine of Devotion") ||
-                         currentIndex === rotationOrder.findIndex(loc => 
-                            loc.chests === "Arkeum" && loc.mining === "Orc Village"))) {
-                        // 7PM CST equivalent - this is repeating the 6PM hour
-                        // Do nothing, keep the same index
-                    } else if ((effectiveHour === 2 || effectiveHour === 3) && 
-                               (currentIndex === rotationOrder.findIndex(loc => 
-                                  loc.chests === "Shrine of Devotion" && loc.mining === "Arkeum") ||
-                                currentIndex === rotationOrder.findIndex(loc => 
-                                  loc.chests === "Orc Village" && loc.mining === "Seal Sanctuary"))) {
-                        // 9PM CST equivalent - this is repeating the 8PM hour
-                        // Do nothing, keep the same index
-                    } else {
-                        // Not a repeat hour, advance normally
-                        currentIndex = (currentIndex + 1) % rotationOrder.length;
-                    }
+                // First, determine what hour this is in the pattern (0-3)
+                const patternHour = elapsedHourCounter % 4;
+                
+                // Calculate what actual CST hour this corresponds to
+                // CST = UTC - 6 hours (during standard time)
+                // So in CST terms:
+                // Arkeum > Orc Village occurs at 0, 4, 8, 12, 16, 20 (pattern hour 0)
+                // Orc Village > Seal Sanctuary occurs at 1, 5, 9, 13, 17, 21 (pattern hour 1)
+                // Seal Sanctuary > Shrine of Devotion occurs at 2, 6, 10, 14, 18, 22 (pattern hour 2)
+                // Shrine of Devotion > Arkeum occurs at 3, 7, 11, 15, 19, 23 (pattern hour 3)
+                
+                // Calculate the CST hour this would be (simplified conversion)
+                const cstHour = (elapsedHourCounter + 16) % 24; // 4PM CST reference
+                
+                // Check if we're at 7PM or 9PM CST, which repeat the previous hour's spawn
+                if (cstHour === 19 || cstHour === 21) {
+                    // These hours repeat the previous hour's spawn
+                    // So we don't increment the index
                 } else {
-                    // Regular hour, advance to next rotation
+                    // Normal hour, advance to next spawn in the rotation
                     currentIndex = (currentIndex + 1) % rotationOrder.length;
                 }
             }
