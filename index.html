@@ -152,16 +152,9 @@
             <div class="time-box">
                 Local Time: <span id="local-time"></span>
             </div>
-            <div class="time-box server-time">
-                Server Time (CST): <span id="server-time"></span>
-            </div>
             <div class="time-box">
                 UTC Time: <span id="utc-time"></span>
             </div>
-        </div>
-        
-        <div class="timezone-info">
-            All spawn times are synchronized to server time (CST). Times shown are converted to your local time zone.
         </div>
         
         <h2>Next Spawn In:</h2>
@@ -331,10 +324,6 @@
             // Display local time (HH:MM)
             document.getElementById("local-time").textContent = 
                 now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            // Display server time (CST) (HH:MM:SS)
-            document.getElementById("server-time").textContent = 
-                nowCst.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit', timeZone: 'America/Chicago'});
             
             // Display UTC time in 12-hour format (HH:MM)
             const utcHours = now.getUTCHours();
