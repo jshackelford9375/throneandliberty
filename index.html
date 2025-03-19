@@ -186,52 +186,21 @@
     </div>
     
     <script>
-        // Define the basic rotation order for normal hours
-        const normalRotation = [
-            { chests: "Arkeum", mining: "Orc Village" },
-            { chests: "Orc Village", mining: "Seal Sanctuary" },
-            { chests: "Seal Sanctuary", mining: "Shrine of Devotion" },
-            { chests: "Shrine of Devotion", mining: "Arkeum" }
+        // Reference point: 3/19/2025 at 4PM CST = Arkeum > Orc Village
+        const referenceDate = new Date("2025-03-19T16:00:00-06:00"); // 4PM CST/CDT
+        
+        // Basic 4-hour rotation pattern
+        const rotationPattern = [
+            { chests: "Arkeum", mining: "Orc Village" },            // 0, 4, 8, 12, 16, 20
+            { chests: "Orc Village", mining: "Seal Sanctuary" },    // 1, 5, 9, 13, 17, 21
+            { chests: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 2, 6, 10, 14, 18, 22
+            { chests: "Shrine of Devotion", mining: "Arkeum" }      // 3, 7, 11, 15, 19, 23
         ];
         
-        // Special rotations for 7PM and 9PM - these alternate every day
-        const sevenPmPatterns = [
-            { chests: "Seal Sanctuary", mining: "Shrine of Devotion" }, // Odd days (Mar 19, 21, 23...)
-            { chests: "Arkeum", mining: "Orc Village" }                // Even days (Mar 20, 22, 24...)
-        ];
-        
-        const ninePmPatterns = [
-            { chests: "Shrine of Devotion", mining: "Arkeum" },        // Odd days (Mar 19, 21, 23...)
-            { chests: "Orc Village", mining: "Seal Sanctuary" }        // Even days (Mar 20, 22, 24...)
-        ];
-        
-        // Reference date (March 19, 2025)
-        const referenceDate = new Date("2025-03-19T00:00:00Z");
-        
-        // Function to get the location for a specific date and hour
-        function getLocationForDateTime(date, hour) {
-            // Handle special cases for 7PM and 9PM
-            if (hour === 19) { // 7PM
-                // Determine if it's an odd or even day from the reference
-                const daysDiff = Math.floor((date - referenceDate) / (1000 * 60 * 60 * 24));
-                return sevenPmPatterns[daysDiff % 2];
-            } 
-            else if (hour === 21) { // 9PM
-                // Determine if it's an odd or even day from the reference
-                const daysDiff = Math.floor((date - referenceDate) / (1000 * 60 * 60 * 24));
-                return ninePmPatterns[daysDiff % 2];
-            }
-            else {
-                // For other hours, use the normal 4-hour rotation
-                // Step 1: Calculate hours since midnight
-                const hoursSinceMidnight = hour;
-                
-                // Step 2: Determine which 4-hour block we're in and the index within the rotation
-                // Each location normally lasts 1 hour in the 4-hour cycle
-                const indexInRotation = (hoursSinceMidnight % 4);
-                
-                return normalRotation[indexInRotation];
-            }
+        // For 7PM and 9PM special cases
+        function isOddDay(date) {
+            const dayDiff = Math.floor((date - referenceDate) / (24 * 60 * 60 * 1000));
+            return dayDiff % 2 === 0; // 0, 2, 4, etc. = Mar 19, 21, 23...
         }
         
         // Function to get the current time block (0, 20, or 40 minutes)
@@ -258,6 +227,31 @@
             return 20; // If current is 40, previous is 20
         }
         
+        // Get the location for a specific time (accounting for 7PM and 9PM special cases)
+        function getLocationForTime(date) {
+            // Convert to CST (for game time)
+            const cstDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Chicago"}));
+            const cstHour = cstDate.getHours();
+            
+            // Handle 7PM and 9PM special cases
+            if (cstHour === 19) { // 7PM
+                if (isOddDay(date)) {
+                    return { chests: "Seal Sanctuary", mining: "Shrine of Devotion" };
+                } else {
+                    return { chests: "Arkeum", mining: "Orc Village" };
+                }
+            } else if (cstHour === 21) { // 9PM
+                if (isOddDay(date)) {
+                    return { chests: "Shrine of Devotion", mining: "Arkeum" };
+                } else {
+                    return { chests: "Orc Village", mining: "Seal Sanctuary" };
+                }
+            }
+            
+            // Standard 4-hour rotation for all other hours
+            return rotationPattern[cstHour % 4];
+        }
+        
         // Function to update the timer and location information
         function updateSpawnInfo() {
             const now = new Date();
@@ -267,12 +261,8 @@
                 now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             // Display UTC time in 12-hour format (HH:MM)
-            const utcHours = now.getUTCHours();
-            const utcHours12 = utcHours % 12 || 12; // Convert to 12-hour format
-            const utcAmPm = utcHours < 12 ? 'AM' : 'PM';
-            const utcMinutes = now.getUTCMinutes().toString().padStart(2, '0');
             document.getElementById("utc-time").textContent = 
-                `${utcHours12}:${utcMinutes} ${utcAmPm}`;
+                new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'UTC'});
             
             // Get the current time block (0, 20, or 40)
             const currentTimeBlock = getCurrentTimeBlock();
@@ -304,42 +294,33 @@
             const previousTimeBlock = getPreviousTimeBlock(currentTimeBlock);
             const nextTimeBlock = getNextTimeBlock(currentTimeBlock);
             
-            // Prepare time for calculations
-            const currentHour = now.getHours();
-            let previousHour = currentHour;
-            let nextHour = currentHour;
-            
-            // Adjust hours for different time blocks
-            if (currentTimeBlock === 0 && previousTimeBlock === 40) {
-                previousHour = (currentHour - 1 + 24) % 24; // Handle midnight crossover
-            } else if (currentTimeBlock === 40 && nextTimeBlock === 0) {
-                nextHour = (currentHour + 1) % 24; // Handle midnight crossover
-            }
-            
-            // Create date objects for each time block
+            // Create date objects for current, previous, and next spawns
             const currentDate = new Date(now);
             
             const previousDate = new Date(now);
-            previousDate.setHours(previousHour);
+            if (currentTimeBlock === 0 && previousTimeBlock === 40) {
+                previousDate.setHours(previousDate.getHours() - 1);
+            }
+            previousDate.setMinutes(previousTimeBlock, 0, 0);
             
             const nextDate = new Date(now);
-            nextDate.setHours(nextHour);
+            if (currentTimeBlock === 40 && nextTimeBlock === 0) {
+                nextDate.setHours(nextDate.getHours() + 1);
+            }
+            nextDate.setMinutes(nextTimeBlock, 0, 0);
             
-            // Get the spawn locations
-            const currentLocation = getLocationForDateTime(currentDate, currentHour);
-            const previousLocation = getLocationForDateTime(previousDate, previousHour);
-            const nextLocation = getLocationForDateTime(nextDate, nextHour);
+            // Get locations for each spawn
+            const currentLocation = getLocationForTime(currentDate);
+            const previousLocation = getLocationForTime(previousDate);
+            const nextLocation = getLocationForTime(nextDate);
             
             // Format times for display
-            const formatTimeBlock = (date, timeBlock) => {
-                const displayDate = new Date(date);
-                displayDate.setMinutes(timeBlock, 0, 0);
-                return displayDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            };
-            
-            document.getElementById("current-time").textContent = formatTimeBlock(now, currentTimeBlock);
-            document.getElementById("previous-time").textContent = formatTimeBlock(previousDate, previousTimeBlock);
-            document.getElementById("next-time").textContent = formatTimeBlock(nextDate, nextTimeBlock);
+            document.getElementById("current-time").textContent = 
+                currentDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById("previous-time").textContent = 
+                previousDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById("next-time").textContent = 
+                nextDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             // Update location information
             document.getElementById("current-chest").innerHTML = `<i class="fas fa-box-open"></i> ${currentLocation.chests}`;
