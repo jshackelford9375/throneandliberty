@@ -124,7 +124,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="main-container">
         <h1>Gatekeeping is Stupid</h1>
         
         <div class="header-info">
@@ -177,6 +177,30 @@
     </div>
     
     <script>
+        // Remove the function definition display
+        document.addEventListener('DOMContentLoaded', function() {
+            // Remove any text nodes that contain function code
+            const container = document.querySelector('.container');
+            if (container) {
+                const textNodes = [];
+                const walk = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while (node = walk.nextNode()) {
+                    if (node.textContent.includes('function getCurrentRotationIndex()') || 
+                        node.textContent.includes('// Function to get the current spawn rotation')) {
+                        textNodes.push(node);
+                    }
+                }
+                
+                // Remove the function text nodes
+                textNodes.forEach(node => {
+                    if (node.parentNode) {
+                        node.parentNode.removeChild(node);
+                    }
+                });
+            }
+        });
+
         // Spawn locations data - each hour will have the same 3 rotations (XX:00, XX:20, XX:40)
         const spawnCycle = [
             { name: "Orc Village to Seal Sanctuary", chests: "Orc Village", mining: "Seal Sanctuary" },
@@ -185,8 +209,8 @@
             { name: "Arkeum to Orc Village", chests: "Arkeum", mining: "Orc Village" }
         ];
         
-        // Known reference point: Current time (March 19, 2025 at 12:20 CST)
-        // We know that Orc Village has mining nodes and Arkeum has chests
+        // Known reference point: Current time (March 19, 2025 around 1:10 PM CST)
+        // We know that Seal Sanctuary has mining nodes and Orc Village has chests
         const referenceDate = new Date();
         // Set to the nearest 20-minute block
         const refMinutes = referenceDate.getUTCMinutes();
@@ -197,7 +221,20 @@
         } else {
             referenceDate.setUTCMinutes(40, 0, 0);
         }
-        const referenceIndex = 3; // Index for "Arkeum to Orc Village" in our array
+        const referenceIndex = 0; // Index for "Orc Village to Seal Sanctuary" in our array
+        
+        // Function to get the current spawn rotation
+        function getCurrentRotationIndex() {
+            const now = new Date();
+            
+            // Calculate the elapsed 20-minute blocks since the reference date
+            const msElapsed = now.getTime() - referenceDate.getTime();
+            const minutesElapsed = Math.floor(msElapsed / (1000 * 60));
+            const blocksElapsed = Math.floor(minutesElapsed / 20);
+            
+            // Calculate the current spawn index based on the elapsed blocks (each block = 20 min)
+            return (referenceIndex + blocksElapsed) % 4;
+        }
         
         // Function to update the timer and location information
         function updateSpawnInfo() {
@@ -215,14 +252,8 @@
             document.getElementById("utc-time").textContent = 
                 `${utcHours12}:${utcMinutes} ${utcAmPm}`;
             
-            // Calculate the elapsed 20-minute blocks since the reference date
-            const msElapsed = now.getTime() - referenceDate.getTime();
-            const minutesElapsed = Math.floor(msElapsed / (1000 * 60));
-            const blocksElapsed = Math.floor(minutesElapsed / 20);
-            
-            // Calculate the current spawn index based on the elapsed blocks (each block = 20 min)
-            // We rotate through the 4 patterns, so modulo 4
-            const currentIndex = (referenceIndex + blocksElapsed) % 4;
+            // Get the current rotation index
+            const currentIndex = getCurrentRotationIndex();
             
             // Calculate previous and next indices
             const previousIndex = (currentIndex - 1 + 4) % 4;
@@ -265,7 +296,6 @@
             const previousSpawnMinute = getPreviousSpawnMinute(currentSpawnMinute);
             const nextSpawnMinute = getNextSpawnMinute(currentSpawnMinute);
             
-            // Update spawn time displays
             // Convert UTC times to local times for display
             const previousLocalTime = new Date();
             const currentLocalTime = new Date();
@@ -308,7 +338,7 @@
             
             // Update location information based on current time
             // For 20-minute intervals within each hour
-            const minuteInterval = Math.floor(parseInt(utcMinutes) / 20);
+            const minuteInterval = Math.floor(parseInt(currentMinute) / 20);
             
             // Previous, current, and next spawn indices
             let prevSpawnIndex, currSpawnIndex, nextSpawnIndex;
@@ -339,8 +369,11 @@
             document.getElementById("next-chest").innerHTML = `<i class="fas fa-box-open"></i> ${spawnCycle[nextSpawnIndex].chests}`;
             document.getElementById("next-mining").innerHTML = `<i class="fas fa-gem"></i> ${spawnCycle[nextSpawnIndex].mining}`;
             
+            // Log for debugging (remove in production)
+            console.log("Current Index:", currentIndex, "Location:", spawnCycle[currSpawnIndex].name);
+            
             // Check if we need to refresh the page for a new spawn
-            if (secondsToNextSpawn === 0) {
+            if (secondsToNextSpawn <= 0) {
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
@@ -363,9 +396,12 @@
             return "00";
         }
         
-        // Initialize and set up interval
+        // Initialize and set up interval (clear any existing intervals first)
+        if (window.spawnTimerInterval) {
+            clearInterval(window.spawnTimerInterval);
+        }
         updateSpawnInfo();
-        setInterval(updateSpawnInfo, 1000);
+        window.spawnTimerInterval = setInterval(updateSpawnInfo, 1000);
     </script>
 </body>
-</html>
+</html>       
