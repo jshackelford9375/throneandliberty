@@ -229,25 +229,18 @@
             const dayShift = (daysSinceRef * 2) % 4;
             spawnIndex = (spawnIndex + dayShift) % 4;
             
-            // Special cases for 7 PM and 9 PM for each day in the pattern
-            const dayInPattern = daysSinceRef % 2; // 0 = day 1, 1 = day 2
-            
+            // Special cases for 7 PM and 9 PM for all days
+            // 7 PM always repeats the 6 PM spawn
             if (hour === 19) { // 7 PM
-                if (dayInPattern === 0) {
-                    // On pattern day 1, 7 PM has the same index as 6 PM
-                    spawnIndex = (day1HourToIndex[18] + dayShift) % 4;
-                } else if (dayInPattern === 1) {
-                    // On pattern day 2, 7 PM has the same index as the location before (it's 0 in day 1, shifted by dayShift)
-                    spawnIndex = (0 + dayShift) % 4;
-                }
-            } else if (hour === 21) { // 9 PM
-                if (dayInPattern === 0) {
-                    // On pattern day 1, 9 PM has the same index as 8 PM
-                    spawnIndex = (day1HourToIndex[20] + dayShift) % 4;
-                } else if (dayInPattern === 1) {
-                    // On pattern day 2, 9 PM has the same index as the location before (it's 1 in day 1, shifted by dayShift)
-                    spawnIndex = (1 + dayShift) % 4;
-                }
+                // Get the index for 6 PM on the same day
+                const sixPmIndex = (day1HourToIndex[18] + dayShift) % 4;
+                spawnIndex = sixPmIndex;
+            } 
+            // 9 PM always repeats the 8 PM spawn
+            else if (hour === 21) { // 9 PM
+                // Get the index for 8 PM on the same day
+                const eightPmIndex = (day1HourToIndex[20] + dayShift) % 4;
+                spawnIndex = eightPmIndex;
             }
             
             return spawnIndex;
