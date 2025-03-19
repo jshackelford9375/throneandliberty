@@ -177,13 +177,17 @@
     </div>
     
     <script>
-        // Spawn locations data
+        // Spawn locations data - each hour will have the same 3 rotations (XX:00, XX:20, XX:40)
         const spawnCycle = [
-            { hour: 1, chests: "Orc Village", mining: "Seal Sanctuary" },
-            { hour: 2, chests: "Seal Sanctuary", mining: "Shrine of Devotion" },
-            { hour: 3, chests: "Shrine of Devotion", mining: "Arkeum" },
-            { hour: 4, chests: "Arkeum", mining: "Orc Village" }
+            { name: "Orc Village to Seal Sanctuary", chests: "Orc Village", mining: "Seal Sanctuary" },
+            { name: "Seal Sanctuary to Shrine", chests: "Seal Sanctuary", mining: "Shrine of Devotion" },
+            { name: "Shrine to Arkeum", chests: "Shrine of Devotion", mining: "Arkeum" },
+            { name: "Arkeum to Orc Village", chests: "Arkeum", mining: "Orc Village" }
         ];
+        
+        // Known reference point: 3/18 at 12:00 AM CST (which is 6:00 AM UTC on 3/18) Arkeum had chest spawns
+        const referenceDate = new Date(2025, 2, 18, 6, 0, 0); // March 18, 2025, 6:00 AM UTC
+        const referenceIndex = 3; // Index for "Arkeum to Orc Village" in our array
         
         // Function to update the timer and location information
         function updateSpawnInfo() {
@@ -201,26 +205,29 @@
             document.getElementById("utc-time").textContent = 
                 `${utcHours12}:${utcMinutes} ${utcAmPm}`;
             
-            // Calculate current spawn cycle
-            const utcHour = now.getUTCHours();
+            // Calculate the elapsed 20-minute blocks since the reference date
+            const msElapsed = now.getTime() - referenceDate.getTime();
+            const minutesElapsed = Math.floor(msElapsed / (1000 * 60));
+            const blocksElapsed = Math.floor(minutesElapsed / 20);
             
-            // Find the current cycle hour (1, 2, 3, or 4)
-            let cycleHour = (utcHour % 4);
-            if (cycleHour === 0) cycleHour = 4;
+            // Calculate the current spawn index based on the elapsed blocks (each block = 20 min)
+            // We rotate through the 4 patterns, so modulo 4
+            const currentIndex = (referenceIndex + blocksElapsed) % 4;
             
-            // Find current, previous, and next cycles
-            const currentIndex = spawnCycle.findIndex(cycle => cycle.hour === cycleHour);
-            const previousIndex = (currentIndex - 1 + spawnCycle.length) % spawnCycle.length;
-            const nextIndex = (currentIndex + 1) % spawnCycle.length;
+            // Calculate previous and next indices
+            const previousIndex = (currentIndex - 1 + 4) % 4;
+            const nextIndex = (currentIndex + 1) % 4;
             
             // Calculate next spawn time (every 20 minutes: 0, 20, 40)
             let minutesToNextSpawn;
-            if (parseInt(utcMinutes) < 20) {
-                minutesToNextSpawn = 20 - parseInt(utcMinutes);
-            } else if (parseInt(utcMinutes) < 40) {
-                minutesToNextSpawn = 40 - parseInt(utcMinutes);
+            const currentMinute = now.getUTCMinutes();
+            
+            if (currentMinute < 20) {
+                minutesToNextSpawn = 20 - currentMinute;
+            } else if (currentMinute < 40) {
+                minutesToNextSpawn = 40 - currentMinute;
             } else {
-                minutesToNextSpawn = 60 - parseInt(utcMinutes);
+                minutesToNextSpawn = 60 - currentMinute;
             }
             
             // Calculate seconds to next spawn
@@ -236,9 +243,9 @@
             
             // Determine spawn intervals for display
             let currentSpawnMinute;
-            if (parseInt(utcMinutes) < 20) {
+            if (currentMinute < 20) {
                 currentSpawnMinute = "00";
-            } else if (parseInt(utcMinutes) < 40) {
+            } else if (currentMinute < 40) {
                 currentSpawnMinute = "20";
             } else {
                 currentSpawnMinute = "40";
