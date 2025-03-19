@@ -296,6 +296,7 @@
             
             // Create date objects for current, previous, and next spawns
             const currentDate = new Date(now);
+            currentDate.setMinutes(currentTimeBlock, 0, 0); // Set to the spawn time block
             
             const previousDate = new Date(now);
             if (currentTimeBlock === 0 && previousTimeBlock === 40) {
