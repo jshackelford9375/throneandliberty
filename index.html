@@ -185,8 +185,18 @@
             { name: "Arkeum to Orc Village", chests: "Arkeum", mining: "Orc Village" }
         ];
         
-        // Known reference point: 3/18 at 12:00 AM CST (which is 6:00 AM UTC on 3/18) Arkeum had chest spawns
-        const referenceDate = new Date(2025, 2, 18, 6, 0, 0); // March 18, 2025, 6:00 AM UTC
+        // Known reference point: Current time (March 19, 2025 at 12:20 CST)
+        // We know that Orc Village has mining nodes and Arkeum has chests
+        const referenceDate = new Date();
+        // Set to the nearest 20-minute block
+        const refMinutes = referenceDate.getUTCMinutes();
+        if (refMinutes < 20) {
+            referenceDate.setUTCMinutes(0, 0, 0);
+        } else if (refMinutes < 40) {
+            referenceDate.setUTCMinutes(20, 0, 0);
+        } else {
+            referenceDate.setUTCMinutes(40, 0, 0);
+        }
         const referenceIndex = 3; // Index for "Arkeum to Orc Village" in our array
         
         // Function to update the timer and location information
