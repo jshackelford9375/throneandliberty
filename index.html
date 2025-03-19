@@ -68,10 +68,6 @@
             border-radius: 5px;
             background-color: #202040;
         }
-        .server-time {
-            color: #00ff7f;
-            font-weight: bold;
-        }
         .location-name {
             font-weight: bold;
             font-size: 1.2rem;
@@ -119,14 +115,6 @@
         }
         .mining-color {
             background-color: #c0c0c0;
-        }
-        .timezone-info {
-            text-align: center;
-            margin: 15px 0;
-            padding: 10px;
-            background-color: #0f3460;
-            border-radius: 5px;
-            font-size: 0.9rem;
         }
         @media (max-width: 600px) {
             .location-container {
@@ -206,67 +194,19 @@
             { chests: "Shrine of Devotion", mining: "Arkeum" }
         ];
         
-        // Reference point: 3/19/2025 at 4PM CST = Arkeum > Orc Village
-        const referenceDate = new Date("2025-03-19T16:00:00-05:00"); // 4PM CST
+        // Reference point in UTC: 3/19/2025 at 4PM CST = 9PM UTC
+        const referenceDate = new Date("2025-03-19T21:00:00Z"); // 4PM CST is 9PM UTC
         const referenceIndex = 0; // Index 0 is Arkeum > Orc Village
         
-        // Function to convert local time to CST (America/Chicago)
-        function getServerTime(localDate) {
-            // Create a date object with the local time
-            const date = new Date(localDate);
-            
-            // Get the local time offset in minutes
-            const localOffset = date.getTimezoneOffset();
-            
-            // CST offset is UTC-5 (300 minutes) during standard time and UTC-6 (360 minutes) during DST
-            // We need to check if DST is in effect for the given date
-            
-            // Create a new date in January (standard time) and June (DST) to check offsets
-            const januaryDate = new Date(date.getFullYear(), 0, 1);
-            const juneDate = new Date(date.getFullYear(), 5, 1);
-            
-            // If the offsets are different, DST is observed
-            const isDstObserved = januaryDate.getTimezoneOffset() !== juneDate.getTimezoneOffset();
-            
-            // If DST is observed, we need to determine if the given date is during DST
-            let cstOffset;
-            if (isDstObserved) {
-                // Get the offset for the specific date (will be different during DST)
-                const dateOffset = date.getTimezoneOffset();
-                
-                // Standard time has a larger offset (more negative), so if current offset is smaller, it's DST
-                const isDstInEffect = dateOffset < Math.max(januaryDate.getTimezoneOffset(), juneDate.getTimezoneOffset());
-                
-                // CST offset is UTC-5 (300 minutes) during standard time, UTC-6 (360 minutes) during DST
-                cstOffset = isDstInEffect ? 300 : 360;
-            } else {
-                // If DST is not observed, use standard time offset
-                cstOffset = 360;
-            }
-            
-            // Calculate difference between local offset and CST offset
-            const diffMinutes = localOffset - cstOffset;
-            
-            // Adjust the date by the difference
-            return new Date(date.getTime() + diffMinutes * 60000);
-        }
-        
-        // Function to convert CST to local time
-        function getLocalTimeFromCst(cstDate) {
-            // This works automatically because Date objects store time in UTC
-            // and display in local time zone
-            return new Date(cstDate);
-        }
-        
-        // Function to get the location for a specific CST date/time
-        function getLocationForCstDateTime(cstDateTime) {
+        // Function to get the location for a specific UTC date/time
+        function getLocationForUtcDateTime(utcDateTime) {
             // Calculate hours elapsed from reference
-            const msElapsed = cstDateTime.getTime() - referenceDate.getTime();
+            const msElapsed = utcDateTime.getTime() - referenceDate.getTime();
             const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
             
             // Track the current position in the rotation
             let currentIndex = referenceIndex;
-            let currentHour = 16; // 4PM
+            let currentHour = 21; // 9PM UTC (4PM CST)
             let currentDate = new Date(referenceDate);
             
             // Step through each hour from reference to target date/time
@@ -275,14 +215,42 @@
                 currentHour++;
                 if (currentHour === 24) {
                     currentHour = 0;
-                    currentDate.setDate(currentDate.getDate() + 1);
+                    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
                 }
                 
-                // Check if we're at 7PM or 9PM, which repeat the previous hour
-                if (currentHour === 19 || currentHour === 21) {
-                    // Do nothing - keep the same index as it's a repeat
+                // Convert UTC hour to CST hour (UTC-5 or UTC-6 depending on DST)
+                // For simplicity and because spawn patterns repeat, we'll just use UTC hour % 24
+                // This gives us the same daily pattern regardless of time zone
+                const effectiveHour = currentHour % 24;
+                
+                // Check if we're at 7PM or 9PM CST equivalent in UTC
+                // 7PM CST = 0:00 UTC (midnight) during standard time, 1:00 UTC during DST
+                // 9PM CST = 2:00 UTC during standard time, 3:00 UTC during DST
+                // We'll simplify and check for hours 0/1 and 2/3
+                if (effectiveHour === 0 || effectiveHour === 1 || effectiveHour === 2 || effectiveHour === 3) {
+                    // These are equivalent to 7PM and 9PM CST - check if it matches the pattern
+                    // 7PM repeats 6PM (24-1=23 or 24-2=22 UTC)
+                    // 9PM repeats 8PM (24-3=21 or 24-4=20 UTC)
+                    if ((effectiveHour === 0 || effectiveHour === 1) && 
+                        (currentIndex === rotationOrder.findIndex(loc => 
+                            loc.chests === "Seal Sanctuary" && loc.mining === "Shrine of Devotion") ||
+                         currentIndex === rotationOrder.findIndex(loc => 
+                            loc.chests === "Arkeum" && loc.mining === "Orc Village"))) {
+                        // 7PM CST equivalent - this is repeating the 6PM hour
+                        // Do nothing, keep the same index
+                    } else if ((effectiveHour === 2 || effectiveHour === 3) && 
+                               (currentIndex === rotationOrder.findIndex(loc => 
+                                  loc.chests === "Shrine of Devotion" && loc.mining === "Arkeum") ||
+                                currentIndex === rotationOrder.findIndex(loc => 
+                                  loc.chests === "Orc Village" && loc.mining === "Seal Sanctuary"))) {
+                        // 9PM CST equivalent - this is repeating the 8PM hour
+                        // Do nothing, keep the same index
+                    } else {
+                        // Not a repeat hour, advance normally
+                        currentIndex = (currentIndex + 1) % rotationOrder.length;
+                    }
                 } else {
-                    // Advance to next rotation
+                    // Regular hour, advance to next rotation
                     currentIndex = (currentIndex + 1) % rotationOrder.length;
                 }
             }
@@ -295,7 +263,7 @@
         
         // Function to get the current time block (0, 20, or 40 minutes)
         function getCurrentTimeBlock(date) {
-            const minutes = date.getMinutes();
+            const minutes = date.getUTCMinutes();
             
             if (minutes < 20) return 0;
             if (minutes < 40) return 20;
@@ -319,26 +287,21 @@
         // Function to update the timer and location information
         function updateSpawnInfo() {
             const now = new Date();
-            const nowCst = getServerTime(now);
             
             // Display local time (HH:MM)
             document.getElementById("local-time").textContent = 
                 now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            // Display UTC time in 12-hour format (HH:MM)
-            const utcHours = now.getUTCHours();
-            const utcHours12 = utcHours % 12 || 12; // Convert to 12-hour format
-            const utcAmPm = utcHours < 12 ? 'AM' : 'PM';
-            const utcMinutes = now.getUTCMinutes().toString().padStart(2, '0');
+            // Display UTC time (HH:MM)
             document.getElementById("utc-time").textContent = 
-                `${utcHours12}:${utcMinutes} ${utcAmPm}`;
+                now.toUTCString().slice(17, 22);
             
-            // Get the current time block (0, 20, or 40)
-            const currentTimeBlock = getCurrentTimeBlock(nowCst);
+            // For simplicity, we'll use UTC time blocks for calculations
+            const currentTimeBlock = getCurrentTimeBlock(now);
             
             // Calculate time to next spawn
             let minutesToNextSpawn;
-            const currentMinute = nowCst.getMinutes();
+            const currentMinute = now.getUTCMinutes();
             
             if (currentMinute < 20) {
                 minutesToNextSpawn = 20 - currentMinute;
@@ -349,7 +312,7 @@
             }
             
             // Calculate seconds to next spawn
-            const secondsToNextSpawn = minutesToNextSpawn * 60 - nowCst.getSeconds();
+            const secondsToNextSpawn = minutesToNextSpawn * 60 - now.getUTCSeconds();
             
             // Format time for countdown
             const hours = Math.floor(secondsToNextSpawn / 3600);
@@ -359,51 +322,48 @@
             document.getElementById("countdown").textContent = 
                 `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            // Previous, current, and next spawn times
+            // Previous, current, and next spawn times in UTC
             const previousTimeBlock = getPreviousTimeBlock(currentTimeBlock);
             const nextTimeBlock = getNextTimeBlock(currentTimeBlock);
             
-            // Prepare CST time for calculations
-            const currentHourCst = nowCst.getHours();
-            let previousHourCst = currentHourCst;
-            let nextHourCst = currentHourCst;
+            // Prepare UTC time for calculations
+            const currentHourUtc = now.getUTCHours();
+            let previousHourUtc = currentHourUtc;
+            let nextHourUtc = currentHourUtc;
             
             // Adjust hours for different time blocks
             if (currentTimeBlock === 0 && previousTimeBlock === 40) {
-                previousHourCst = currentHourCst - 1;
+                previousHourUtc = (currentHourUtc - 1 + 24) % 24; // Handle midnight crossover
             } else if (currentTimeBlock === 40 && nextTimeBlock === 0) {
-                nextHourCst = currentHourCst + 1;
+                nextHourUtc = (currentHourUtc + 1) % 24; // Handle midnight crossover
             }
             
-            // Create CST date objects for each time block
-            const currentCstDate = new Date(nowCst);
-            currentCstDate.setMinutes(currentTimeBlock, 0, 0);
+            // Create UTC date objects for each time block
+            const currentUtcDate = new Date(now);
+            currentUtcDate.setUTCMinutes(currentTimeBlock, 0, 0);
             
-            const previousCstDate = new Date(nowCst);
-            previousCstDate.setHours(previousHourCst);
-            previousCstDate.setMinutes(previousTimeBlock, 0, 0);
+            const previousUtcDate = new Date(now);
+            previousUtcDate.setUTCHours(previousHourUtc);
+            previousUtcDate.setUTCMinutes(previousTimeBlock, 0, 0);
             
-            const nextCstDate = new Date(nowCst);
-            nextCstDate.setHours(nextHourCst);
-            nextCstDate.setMinutes(nextTimeBlock, 0, 0);
+            const nextUtcDate = new Date(now);
+            nextUtcDate.setUTCHours(nextHourUtc);
+            nextUtcDate.setUTCMinutes(nextTimeBlock, 0, 0);
             
-            // Convert CST dates back to local time for display
-            const currentLocalDate = getLocalTimeFromCst(currentCstDate);
-            const previousLocalDate = getLocalTimeFromCst(previousCstDate);
-            const nextLocalDate = getLocalTimeFromCst(nextCstDate);
+            // Get the spawn locations for each time
+            const currentLocation = getLocationForUtcDateTime(currentUtcDate);
+            const previousLocation = getLocationForUtcDateTime(previousUtcDate);
+            const nextLocation = getLocationForUtcDateTime(nextUtcDate);
             
-            // Format times for display
-            document.getElementById("current-time").textContent = 
-                currentLocalDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            document.getElementById("previous-time").textContent = 
-                previousLocalDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            document.getElementById("next-time").textContent = 
-                nextLocalDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            // Format times for display - convert UTC to local time for display
+            const formatTimeBlock = (utcDate) => {
+                const localDate = new Date(utcDate);
+                return localDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            };
             
-            // Get locations based on CST time
-            const currentLocation = getLocationForCstDateTime(currentCstDate);
-            const previousLocation = getLocationForCstDateTime(previousCstDate);
-            const nextLocation = getLocationForCstDateTime(nextCstDate);
+            document.getElementById("current-time").textContent = formatTimeBlock(currentUtcDate);
+            document.getElementById("previous-time").textContent = formatTimeBlock(previousUtcDate);
+            document.getElementById("next-time").textContent = formatTimeBlock(nextUtcDate);
             
             // Update location information
             document.getElementById("current-chest").innerHTML = `<i class="fas fa-box-open"></i> ${currentLocation.location.chests}`;
@@ -414,9 +374,6 @@
             
             document.getElementById("next-chest").innerHTML = `<i class="fas fa-box-open"></i> ${nextLocation.location.chests}`;
             document.getElementById("next-mining").innerHTML = `<i class="fas fa-gem"></i> ${nextLocation.location.mining}`;
-            
-            // Debugging information
-            console.log(`Current CST hour: ${currentHourCst}, Location: ${currentLocation.location.chests} → ${currentLocation.location.mining}`);
             
             // Check if we need to update for a new spawn
             if (secondsToNextSpawn <= 1) {
