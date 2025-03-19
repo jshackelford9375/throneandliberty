@@ -199,8 +199,39 @@
             const minutesElapsed = Math.floor(msElapsed / (1000 * 60));
             const blocksElapsed = Math.floor(minutesElapsed / 20);
             
-            // Calculate the current spawn index based on the elapsed blocks (each block = 20 min)
-            return (knownIndex + blocksElapsed) % spawnCycle.length;
+            // Calculate the base index based on the elapsed blocks (each block = 20 min)
+            let baseIndex = (knownIndex + blocksElapsed) % spawnCycle.length;
+            
+            // Adjust for special cases where 7PM and 9PM CST repeat the last hour's entire rotation
+            const hour = now.getHours();
+            
+            // Special case for 7-8 PM (19:00-19:59 CST)
+            if (hour === 19) {
+                // Get the block index we would have had at 6:40 PM
+                // We need to go back 3 blocks (one hour) from the current rotation
+                const hour6PMIndex = (baseIndex - 3 + spawnCycle.length) % spawnCycle.length;
+                
+                // Determine which 20-minute block we're in (0, 1, or 2 for the hour)
+                const blockWithinHour = Math.floor(now.getMinutes() / 20);
+                
+                // Calculate the correct index for this time in the previous hour's pattern
+                return (hour6PMIndex + blockWithinHour) % spawnCycle.length;
+            }
+            
+            // Special case for 9-10 PM (21:00-21:59 CST)
+            if (hour === 21) {
+                // Get the block index we would have had at 8:40 PM
+                // We need to go back 3 blocks (one hour) from the current rotation
+                const hour8PMIndex = (baseIndex - 3 + spawnCycle.length) % spawnCycle.length;
+                
+                // Determine which 20-minute block we're in (0, 1, or 2 for the hour)
+                const blockWithinHour = Math.floor(now.getMinutes() / 20);
+                
+                // Calculate the correct index for this time in the previous hour's pattern
+                return (hour8PMIndex + blockWithinHour) % spawnCycle.length;
+            }
+            
+            return baseIndex;
         }
         
         // Function to get the current time block (0, 20, or 40 minutes)
@@ -230,10 +261,18 @@
         // Function to get the spawn index for a specific time block
         function getSpawnIndexForTimeBlock(timeBlock) {
             const now = new Date();
+            const currentHour = now.getHours();
             const currentIndex = getCurrentRotationIndex();
             
             // Get the current time block
             const currentTimeBlock = getCurrentTimeBlock();
+            
+            // Special handling for 7-8 PM and 9-10 PM (full hour duplication)
+            // For these hours, we don't advance to the next rotation at the hour boundary
+            const is6PM = currentHour === 18;
+            const is7PM = currentHour === 19;
+            const is8PM = currentHour === 20;
+            const is9PM = currentHour === 21;
             
             // If the requested time block is the current one, return the current index
             if (timeBlock === currentTimeBlock) return currentIndex;
@@ -241,23 +280,56 @@
             // For previous or next time blocks, calculate the offset
             if (timeBlock === getPreviousTimeBlock(currentTimeBlock)) {
                 // Previous time block
-                // If current is 0, previous was from last hour (and one rotation before)
                 if (currentTimeBlock === 0 && timeBlock === 40) {
+                    // Transitioning from XX:00 backward to previous hour's XX:40
+                    
+                    // If we're at 7:00, going back to 6:40 - use special calculation
+                    if (is7PM) {
+                        // The 7:00 rotation repeats the pattern from 6:00, so going back is just -1 block 
+                        return (currentIndex - 1 + spawnCycle.length) % spawnCycle.length;
+                    }
+                    
+                    // If we're at 9:00, going back to 8:40 - use special calculation
+                    if (is9PM) {
+                        // The 9:00 rotation repeats the pattern from 8:00, so going back is just -1 block
+                        return (currentIndex - 1 + spawnCycle.length) % spawnCycle.length;
+                    }
+                    
+                    // Normal case - go back one rotation
                     return (currentIndex - 1 + spawnCycle.length) % spawnCycle.length;
                 }
-                // Otherwise, same rotation index
-                return currentIndex;
+                
+                // For normal 20-minute transitions within the hour
+                return (currentIndex - 1 + spawnCycle.length) % spawnCycle.length;
             } else if (timeBlock === getNextTimeBlock(currentTimeBlock)) {
                 // Next time block
-                // If current is 40, next is 0 in the next hour (and one rotation ahead)
                 if (currentTimeBlock === 40 && timeBlock === 0) {
+                    // Transitioning from XX:40 forward to next hour's XX:00
+                    
+                    // If we're at 6:40, going to 7:00 - use special handling
+                    if (is6PM) {
+                        // The 7:00 rotation repeats the same pattern as 6:00
+                        // So instead of advancing to the next rotation, we go back to the pattern at 6:00
+                        return (currentIndex - 2 + spawnCycle.length) % spawnCycle.length;
+                    }
+                    
+                    // If we're at 8:40, going to 9:00 - use special handling
+                    if (is8PM) {
+                        // The 9:00 rotation repeats the same pattern as 8:00
+                        // So instead of advancing to the next rotation, we go back to the pattern at 8:00
+                        return (currentIndex - 2 + spawnCycle.length) % spawnCycle.length;
+                    }
+                    
+                    // Normal case - go to next rotation
                     return (currentIndex + 1) % spawnCycle.length;
                 }
-                // Otherwise, same rotation index
-                return currentIndex;
+                
+                // For normal 20-minute transitions within the hour
+                return (currentIndex + 1) % spawnCycle.length;
             }
             
             // If we get here, something went wrong, return current index as fallback
+            console.log("Fallback case in getSpawnIndexForTimeBlock");
             return currentIndex;
         }
         
