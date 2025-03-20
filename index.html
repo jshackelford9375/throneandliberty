@@ -322,23 +322,23 @@
         const ROTATIONS = [
             {
                 name: "Pattern 1",
-                chest: "Seal of Sanctuary",
-                mine: "Shrine"
-            },
-            {
-                name: "Pattern 2",
-                chest: "Shrine",
-                mine: "Arkeum"
-            },
-            {
-                name: "Pattern 3",
                 chest: "Arkeum",
                 mine: "Orc Village"
             },
             {
-                name: "Pattern 4",
+                name: "Pattern 2",
                 chest: "Orc Village",
                 mine: "Seal of Sanctuary"
+            },
+            {
+                name: "Pattern 3",
+                chest: "Seal of Sanctuary",
+                mine: "Shrine of Devotion"
+            },
+            {
+                name: "Pattern 4",
+                chest: "Shrine of Devotion",
+                mine: "Arkeum"
             }
         ];
         
@@ -348,9 +348,9 @@
         // Time interval for rotation changes (hourly)
         const ROTATION_INTERVAL = 60;
         
-        // Reference point: At 7PM CST Shrine had chest, Arkeum had mining node (Rotation 2)
+        // Reference point: At 7PM CST Shrine had chest, Arkeum had mining node (Rotation 4)
         const REFERENCE_HOUR = 19; // 7PM
-        const REFERENCE_ROTATION_INDEX = 1; // Rotation 2 (based on provided info)
+        const REFERENCE_ROTATION_INDEX = 3; // Rotation with Shrine of Devotion (chest) and Arkeum (mine)
         
         // Creating reference date in CST/CDT (UTC-5/UTC-6 depending on daylight saving)
         // Convert user's local time to CST/CDT reference
@@ -502,6 +502,11 @@
                         mine: "Orc Village"
                     };
                     result.current.index = -1;
+                }
+                // Apply 10PM CST case - we just use the Seal/Shrine pattern (Pattern 3)
+                else if (currentTimeCst.getHours() === 22) {
+                    result.current.rotation = ROTATIONS[2];
+                    result.current.index = 2;
                 }
                 
                 return result;
@@ -728,21 +733,26 @@
                         }
                     }
                     
-                    // Apply 9PM CST override if needed
-                    if (scheduleHourCst === 21) {
-                        const row = createScheduleRow(scheduleTime, {
-                            name: "Override Pattern",
-                            chest: "Arkeum",
-                            mine: "Orc Village"
-                        }, false);
+                // Apply 9PM CST override if needed
+                if (scheduleHourCst === 21) {
+                    const row = createScheduleRow(scheduleTime, {
+                        name: "Override Pattern",
+                        chest: "Arkeum",
+                        mine: "Orc Village"
+                    }, false);
+                    entries.push(row);
+                } else if (scheduleHourCst === 22) {
+                    // At 10PM CST, the pattern is: Seal of Sanctuary (chest) and Shrine of Devotion (mine)
+                    // This is actually the same as Pattern 3
+                    const row = createScheduleRow(scheduleTime, ROTATIONS[2], false);
+                    entries.push(row);
+                } else {
+                    rotation = ROTATIONS[rotationIndex];
+                    if (rotation) {
+                        const row = createScheduleRow(scheduleTime, rotation, false);
                         entries.push(row);
-                    } else {
-                        rotation = ROTATIONS[rotationIndex];
-                        if (rotation) {
-                            const row = createScheduleRow(scheduleTime, rotation, false);
-                            entries.push(row);
-                        }
                     }
+                }
                 }
                 
                 // Add all rows to the schedule body
