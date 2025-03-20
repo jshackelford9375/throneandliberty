@@ -79,9 +79,21 @@
             color: #2196f3;
         }
         
+        .location-container {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .location-item {
+            padding: 5px;
+        }
+        
         .location-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
+            margin-top: 5px;
         }
         
         table {
@@ -200,32 +212,48 @@
             
 
             <div class="current-info">
-                <div class="spawn-row">
-                    <div class="info-box previous">
-                        <h3>Previous Spawn</h3>
-                        <div id="previous-time"></div>
-                    </div>
-                    
-                    <div class="info-box current">
-                        <h3>Current Spawn</h3>
-                        <div id="current-time-slot"></div>
-                    </div>
-                    
-                    <div class="info-box next">
-                        <h3>Next Spawn</h3>
-                        <div id="next-time"></div>
+                <div class="info-box previous">
+                    <h3>Previous Spawn</h3>
+                    <div id="previous-time"></div>
+                    <div class="location-container">
+                        <div class="location-item">
+                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
+                            <div id="previous-chest-location" class="location-name"></div>
+                        </div>
+                        <div class="location-item">
+                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
+                            <div id="previous-mine-location" class="location-name"></div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="spawn-row">
-                    <div class="info-box">
-                        <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
-                        <div id="chest-location" class="location-name"></div>
+                <div class="info-box current">
+                    <h3>Current Spawn</h3>
+                    <div id="current-time-slot"></div>
+                    <div class="location-container">
+                        <div class="location-item">
+                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
+                            <div id="current-chest-location" class="location-name"></div>
+                        </div>
+                        <div class="location-item">
+                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
+                            <div id="current-mine-location" class="location-name"></div>
+                        </div>
                     </div>
-                    
-                    <div class="info-box">
-                        <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
-                        <div id="mine-location" class="location-name"></div>
+                </div>
+                
+                <div class="info-box next">
+                    <h3>Next Spawn</h3>
+                    <div id="next-time"></div>
+                    <div class="location-container">
+                        <div class="location-item">
+                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
+                            <div id="next-chest-location" class="location-name"></div>
+                        </div>
+                        <div class="location-item">
+                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
+                            <div id="next-mine-location" class="location-name"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -453,8 +481,14 @@
                 document.getElementById('current-time').textContent = formatTime(now);
                 
                 // Update locations
-                document.getElementById('chest-location').textContent = spawnInfo.current.rotation.chest || "Unknown";
-                document.getElementById('mine-location').textContent = spawnInfo.current.rotation.mine || "Unknown";
+                document.getElementById('previous-chest-location').textContent = spawnInfo.previous.rotation.chest || "Unknown";
+                document.getElementById('previous-mine-location').textContent = spawnInfo.previous.rotation.mine || "Unknown";
+                
+                document.getElementById('current-chest-location').textContent = spawnInfo.current.rotation.chest || "Unknown";
+                document.getElementById('current-mine-location').textContent = spawnInfo.current.rotation.mine || "Unknown";
+                
+                document.getElementById('next-chest-location').textContent = spawnInfo.next.rotation.chest || "Unknown";
+                document.getElementById('next-mine-location').textContent = spawnInfo.next.rotation.mine || "Unknown";
                 
                 // Update times
                 document.getElementById('previous-time').textContent = formatTime(spawnInfo.previous.time);
