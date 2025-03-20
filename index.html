@@ -3,807 +3,1373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chest and Mining Node Spawn Tracker</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Game Spawn Tracker</title>
     <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #00b894;
+            --dark: #1e1e24;
+            --darker: #141418;
+            --light: #e0e0e0;
+            --accent: #ff7675;
+            --success: #55efc4;
+            --warning: #ffeaa7;
+            --text: #dfe6e9;
+            --text-secondary: #b2bec3;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #121212;
-            color: #eee;
-            max-width: 1000px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
         
-        h1, h2, h3 {
-            color: #ffd700;
+        header {
+            background-color: var(--darker);
+            color: var(--text);
+            padding: 15px;
             text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
         }
         
-        .header-container {
+        .current-time {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: var(--secondary);
+        }
+        
+        .tabs {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .tab-button {
+            padding: 10px 15px;
+            background-color: var(--darker);
+            color: var(--text);
+            border: none;
+            cursor: pointer;
+            margin-right: 2px;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button:hover {
+            opacity: 0.9;
+        }
+        
+        .tab-button.active {
+            opacity: 1;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .countdown-container {
+            background-color: var(--darker);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        
+        .countdown-title {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .countdown-timer {
+            font-size: 3.5rem;
+            font-weight: bold;
+            font-family: monospace;
+            color: var(--warning);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+        
+        .spawn-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
             margin-bottom: 20px;
         }
         
-        .header-container h1 {
-            margin: 0;
-        }
-        
-        .secrets-btn {
-            background-color: #8a5a44;
-            color: #fff;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        
-        .secrets-btn:hover {
-            background-color: #a06b52;
-        }
-        
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .card {
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        
-        .current-info {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .spawn-row {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-        }
-        
-        .info-box {
+        .spawn-card {
             flex: 1;
             min-width: 200px;
+            background-color: var(--darker);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        
+        .spawn-card-header {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .spawn-card.previous .spawn-card-header {
+            background-color: #2d3436;
+        }
+        
+        .spawn-card.current .spawn-card-header {
+            background-color: var(--secondary);
+            color: #121212;
+        }
+        
+        .spawn-card.next .spawn-card-header {
+            background-color: var(--primary);
+        }
+        
+        .spawn-card-content {
             padding: 15px;
-            background-color: #2a2a2a;
-            border-radius: 6px;
             text-align: center;
         }
         
-        .info-box h3 {
-            margin-top: 0;
+        .spawn-time {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
         }
         
-        .countdown {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff6b6b;
+        .chest-location, .mining-location {
             margin: 10px 0;
-        }
-        
-        .previous {
-            color: #ff9800;
-        }
-        
-        .current {
-            background-color: rgba(76, 175, 80, 0.2);
+            font-size: 1.4rem;
             font-weight: bold;
         }
         
-        .next {
-            color: #2196f3;
+        .chest-location {
+            color: #fd79a8;
         }
         
-        .location-container {
-            margin-top: 15px;
+        .mining-location {
+            color: #00cec9;
             display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            gap: 5px;
+            align-items: center;
+            justify-content: center;
         }
         
-        .location-item {
-            flex: 1;
-            padding: 5px;
+        .icon {
+            margin-right: 8px;
+            font-size: 0.9em;
         }
         
-        .location-name {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        
-        table {
+        .schedule-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background-color: var(--darker);
+            border-radius: 8px;
+            overflow: hidden;
         }
         
-        th, td {
+        .schedule-table th, .schedule-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #333;
         }
         
-        th {
-            background-color: #2a2a2a;
-            color: #ffd700;
+        .schedule-table th {
+            background-color: #333;
         }
         
-        tr:hover {
-            background-color: #2e2e2e;
+        .schedule-table tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.03);
         }
         
-        .schedule-options {
-            display: flex;
-            gap: 10px;
+        .schedule-table tr.current {
+            background-color: rgba(255, 234, 167, 0.1);
+        }
+        
+        .schedule-table tr.nine-pm {
+            background-color: rgba(108, 92, 231, 0.1);
+        }
+        
+        .form-container {
+            background-color: var(--darker);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .form-group {
             margin-bottom: 15px;
-            justify-content: center;
         }
         
-        button, select {
-            background-color: #3a3a3a;
-            color: #fff;
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: var(--text);
+        }
+        
+        .form-group input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
             border: none;
             padding: 10px 15px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 1rem;
         }
         
-        button:hover, select:hover {
-            background-color: #4a4a4a;
+        button:hover {
+            background-color: #5649c0;
         }
         
-        .type-indicator {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
+        .hidden {
+            display: none;
         }
         
-        .type-indicator i {
-            margin-right: 3px;
-            font-size: 12px;
-        }
-        
-        .chest {
-            background-color: #8a5a44;
-            color: white;
-        }
-        
-        .mine {
-            background-color: #37747b;
-            color: white;
-        }
-        
-        .rotation-indicator {
-            text-align: center;
-            background-color: #3a3a3a;
-            padding: 8px;
+        .alert {
+            padding: 10px 15px;
             border-radius: 4px;
             margin-bottom: 15px;
+            background-color: var(--warning);
+            color: #333;
         }
         
-        .rotation-name {
-            font-weight: bold;
-            color: #ffd700;
+        .alert-success {
+            background-color: var(--success);
         }
         
-        .time-info {
-            text-align: center;
-            color: #aaa;
-            font-size: 14px;
-            margin-bottom: 10px;
-            display: none; /* Hide this element */
+        .recent-entries {
+            margin-top: 15px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
-        footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #888;
-            font-size: 12px;
+        .entry {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .entry:last-child {
+            border-bottom: none;
+        }
+        
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c0392b;
         }
         
         @media (max-width: 768px) {
-            .info-box {
-                min-width: 100%;
-            }
-            
-            .location-container {
+            .spawn-display {
                 flex-direction: column;
             }
         }
     </style>
 </head>
 <body>
-    <div class="header-container">
-        <h1>Chest and Mining Node Spawn Tracker</h1>
-        <button class="secrets-btn" onclick="window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')">Supple Secrets</button>
-    </div>
-    
     <div class="container">
-        <div class="card">
-            <h2>Current Time: <span id="current-time"></span></h2>
-            <div class="countdown" id="next-spawn-countdown"></div>
+        <header>
+            <h1>Game Spawn Tracker</h1>
+            <div class="current-time" id="current-time">Current Time: Loading...</div>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab('tracker')">Spawn Tracker</button>
+            <button class="tab-button" onclick="openTab('schedule')">Upcoming Spawns</button>
+            <button class="tab-button" onclick="openTab('admin')">Admin</button>
+        </div>
+        
+        <div id="tracker" class="tab-content active">
+            <div class="countdown-container">
+                <div class="countdown-title">Next Spawn In:</div>
+                <div class="countdown-timer" id="countdown-timer">00:00</div>
+            </div>
             
-
-            <div class="current-info">
-                <div class="info-box previous">
-                    <h3>Previous Spawn</h3>
-                    <div id="previous-time"></div>
-                    <div class="location-container">
-                        <div class="location-item">
-                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
-                            <div id="previous-chest-location" class="location-name"></div>
-                        </div>
-                        <div class="location-item">
-                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
-                            <div id="previous-mine-location" class="location-name"></div>
-                        </div>
+            <div class="spawn-display">
+                <div class="spawn-card previous">
+                    <div class="spawn-card-header">Previous Spawn</div>
+                    <div class="spawn-card-content">
+                        <div class="spawn-time" id="previous-time">--:-- --</div>
+                        <div class="chest-location" id="previous-chest">📦 ---</div>
+                        <div class="mining-location" id="previous-mining">💎 ---</div>
                     </div>
                 </div>
                 
-                <div class="info-box current">
-                    <h3>Current Spawn</h3>
-                    <div id="current-time-slot"></div>
-                    <div class="location-container">
-                        <div class="location-item">
-                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
-                            <div id="current-chest-location" class="location-name"></div>
-                        </div>
-                        <div class="location-item">
-                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
-                            <div id="current-mine-location" class="location-name"></div>
-                        </div>
+                <div class="spawn-card current">
+                    <div class="spawn-card-header">Current Spawn</div>
+                    <div class="spawn-card-content">
+                        <div class="spawn-time" id="current-spawn-time">--:-- --</div>
+                        <div class="chest-location" id="current-chest">📦 ---</div>
+                        <div class="mining-location" id="current-mining">💎 ---</div>
                     </div>
                 </div>
                 
-                <div class="info-box next">
-                    <h3>Next Spawn</h3>
-                    <div id="next-time"></div>
-                    <div class="location-container">
-                        <div class="location-item">
-                            <span class="type-indicator chest"><i class="fas fa-box-open"></i> CHEST</span>
-                            <div id="next-chest-location" class="location-name"></div>
-                        </div>
-                        <div class="location-item">
-                            <span class="type-indicator mine"><i class="fas fa-gem"></i> MINE</span>
-                            <div id="next-mine-location" class="location-name"></div>
-                        </div>
+                <div class="spawn-card next">
+                    <div class="spawn-card-header">Next Spawn</div>
+                    <div class="spawn-card-content">
+                        <div class="spawn-time" id="next-time">--:-- --</div>
+                        <div class="chest-location" id="next-chest">📦 ---</div>
+                        <div class="mining-location" id="next-mining">💎 ---</div>
                     </div>
                 </div>
+            </div>
+            
+            <div id="alert-box" class="alert hidden">
+                Special spawn time active! 9PM duplicates 8PM spawns.
             </div>
         </div>
         
-        <div class="card">
-            <h2>Upcoming 12 Hour Schedule</h2>
-            <div class="schedule-options">
-                <button id="toggle-schedule-btn">Show/Hide Schedule</button>
-            </div>
-            
-            <div id="schedule-container" style="display: none;">
-                <table id="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>Chest Location</th>
-                            <th>Mining Location</th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedule-body">
-                        <!-- Will be filled by JavaScript -->
-                    </tbody>
-                </table>
+        <div id="schedule" class="tab-content">
+            <h2>Upcoming Spawns</h2>
+            <table class="schedule-table" id="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Chests</th>
+                        <th>Mining Nodes</th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-body">
+                    <!-- Schedule will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="admin" class="tab-content">
+            <div class="form-container">
+                <h2>Admin Panel</h2>
+                <p>Update the public spawn data repository for all users.</p>
+                
+                <div id="admin-password-form">
+                    <div class="form-group">
+                        <label for="admin-password">Admin Password:</label>
+                        <input type="password" id="admin-password" placeholder="Enter admin password">
+                    </div>
+                    <button onclick="verifyAdminPassword()">Submit</button>
+                </div>
+                
+                <div id="admin-panel" class="hidden">
+                    <div id="admin-alert" class="alert hidden"></div>
+                    
+                    <div class="form-group">
+                        <label for="github-token">GitHub Personal Access Token:</label>
+                        <input type="password" id="github-token" placeholder="Enter your GitHub token with gist permissions">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="github-gist-id">GitHub Gist ID:</label>
+                        <input type="text" id="github-gist-id" placeholder="Enter the Gist ID to update">
+                    </div>
+                    
+                    <button onclick="saveGitHubCredentials()">Save Credentials</button>
+                    
+                    <hr style="margin: 20px 0; border-color: #333;">
+                    
+                    <h3>Update Public Spawn Data</h3>
+                    <div class="form-group">
+                        <label for="admin-spawn-time">Game World Time (CST/CDT):</label>
+                        <input type="datetime-local" id="admin-spawn-time" required>
+                        <p style="margin-top: 5px; font-size: 0.8rem; color: var(--text-secondary);">
+                            Enter the time in Central Time (US) regardless of your location.
+                            <span id="time-conversion-display"></span>
+                        </p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="admin-update-type">Choose location type:</label>
+                        <select id="admin-update-type">
+                            <option value="chest">Chest Location</option>
+                            <option value="mining">Mining Node Location</option>
+                        </select>
+                    </div>
+                    
+                    <div id="admin-chest-selector" class="form-group">
+                        <label for="admin-chest-location">Chest Location:</label>
+                        <select id="admin-chest-location">
+                            <option value="Arkeum">Arkeum</option>
+                            <option value="Orc Village">Orc Village</option>
+                            <option value="Seal Sanctuary">Seal Sanctuary</option>
+                            <option value="Shrine of Devotion">Shrine of Devotion</option>
+                        </select>
+                    </div>
+                    
+                    <div id="admin-mining-selector" class="form-group hidden">
+                        <label for="admin-mining-location">Mining Node Location:</label>
+                        <select id="admin-mining-location">
+                            <option value="Orc Village">Orc Village</option>
+                            <option value="Seal Sanctuary">Seal Sanctuary</option>
+                            <option value="Shrine of Devotion">Shrine of Devotion</option>
+                            <option value="Arkeum">Arkeum</option>
+                        </select>
+                    </div>
+                    
+                    <button onclick="updatePublicGist()">Update Public Repository</button>
+                    
+                    <hr style="margin: 20px 0; border-color: #333;">
+                    
+                    <h3>Recent Public Updates</h3>
+                    <div class="recent-entries" id="public-entries">
+                        <!-- Public entries will be displayed here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <footer>
-        <p>Chest and Mining Node Spawn Tracker | Updated: <span id="last-updated"></span></p>
-    </footer>
-    
+
     <script>
-        // Define the patterns
-        const ROTATIONS = [
-            {
-                name: "Pattern 1",
-                chest: "Arkeum",
-                mine: "Orc Village"
-            },
-            {
-                name: "Pattern 2",
-                chest: "Orc Village",
-                mine: "Seal of Sanctuary"
-            },
-            {
-                name: "Pattern 3",
-                chest: "Seal of Sanctuary",
-                mine: "Shrine of Devotion"
-            },
-            {
-                name: "Pattern 4",
-                chest: "Shrine of Devotion",
-                mine: "Arkeum"
-            }
-        ];
+        // Configuration
+        const ADMIN_PASSWORD = "gameadmin123"; // Change this to your preferred password
+        const GITHUB_ADMIN_PASSWORD = "gatekeepmedaddy!"; // Change this to a different secure password
+        const CHEST_LOCATIONS = ["Arkeum", "Orc Village", "Seal Sanctuary", "Shrine of Devotion"];
+        const MINING_LOCATIONS = ["Orc Village", "Seal Sanctuary", "Shrine of Devotion", "Arkeum"];
         
-        // Time interval in minutes for spawns
-        const SPAWN_INTERVAL = 20;
+        // Set a fixed correction to harmonize with CST
+        const HOUR_CORRECTION = -2;  // Adjust by -2 hours to match CST reference
         
-        // Time interval for rotation changes (hourly)
-        const ROTATION_INTERVAL = 60;
+        // Settings storage
+        let settings = {
+            referenceSpawns: [], // Will hold user-provided reference spawns
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone // Store user's timezone
+        };
         
-        // Reference point: At 7PM CST Shrine had chest, Arkeum had mining node (Rotation 4)
-        const REFERENCE_HOUR = 19; // 7PM
-        const REFERENCE_ROTATION_INDEX = 3; // Rotation with Shrine of Devotion (chest) and Arkeum (mine)
-        
-        // Creating reference date in CST/CDT (UTC-5/UTC-6 depending on daylight saving)
-        // Convert user's local time to CST/CDT reference
-        function createCSTReference(hour) {
-            // Create a date object for today
-            const referenceDate = new Date();
-            
-            // Get the user's timezone offset in minutes
-            const userTimezoneOffset = referenceDate.getTimezoneOffset();
-            
-            // CST/CDT timezone offset is either UTC-6 (360 minutes) or UTC-5 (300 minutes) 
-            // depending on daylight saving time
-            // We'll determine which one to use based on the current date
-            const cstOffset = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }).includes('CDT') ? 300 : 360;
-            
-            // Calculate the difference between user's timezone and CST/CDT
-            const diffFromCST = userTimezoneOffset - cstOffset;
-            
-            // Set the hour in CST/CDT
-            referenceDate.setHours(hour, 0, 0, 0);
-            
-            // Adjust for the timezone difference (convert CST to user's local time)
-            referenceDate.setMinutes(referenceDate.getMinutes() - diffFromCST);
-            
-            return referenceDate;
+        // Get the hour in CST/Chicago timezone
+        function getCSTHour(date) {
+            return parseInt(new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Chicago',
+                hour: 'numeric',
+                hour12: false
+            }).format(date));
         }
         
-        // Create the reference date at 7PM CST in user's local time
-        const REFERENCE_DATE_CST = createCSTReference(REFERENCE_HOUR);
+        // Check if a date is at 9PM CST
+        function is9PMCST(date) {
+            return getCSTHour(date) === 21;
+        }
         
-        // Calculate the current rotation and spawn info based on time
-        function calculateCurrentInfo() {
+        // Tab functionality
+        function openTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show the selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Activate the clicked tab button
+            document.querySelectorAll('.tab-button').forEach(button => {
+                if (button.textContent.toLowerCase().includes(tabName.toLowerCase())) {
+                    button.classList.add('active');
+                }
+            });
+        }
+        
+        // Load settings from either localStorage or URL parameters
+        async function loadSettings() {
+            console.log("Loading settings...");
+            
+            // Set a global timezone offset variable
+            settings.timezoneOffset = new Date().getTimezoneOffset();
+            console.log("Local timezone offset (minutes):", settings.timezoneOffset);
+            
+            // First try to load from URL if a parameter exists
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareCode = urlParams.get('share');
+            
+            if (shareCode) {
+                try {
+                    console.log("Found share code in URL, processing...");
+                    // Decode the share code (base64)
+                    const decodedData = atob(shareCode);
+                    const sharedSettings = JSON.parse(decodedData);
+                    
+                    // Merge with any existing settings
+                    settings = {
+                        ...settings,
+                        referenceSpawns: [...(settings.referenceSpawns || []), ...sharedSettings.referenceSpawns]
+                    };
+                    
+                    // Save to localStorage
+                    localStorage.setItem('spawnTrackerSettings', JSON.stringify(settings));
+                    
+                    // Show import success message
+                    const alertBox = document.getElementById('alert-box');
+                    alertBox.textContent = "Imported shared spawn data successfully!";
+                    alertBox.classList.remove('hidden');
+                    setTimeout(() => {
+                        alertBox.classList.add('hidden');
+                    }, 5000);
+                    
+                    // Remove the parameter from URL for cleaner sharing
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    console.log("Shared settings processed, reference spawns:", settings.referenceSpawns.length);
+                } catch (e) {
+                    console.error("Error loading shared settings:", e);
+                }
+            }
+            
+            // Then try localStorage
+            const savedSettings = localStorage.getItem('spawnTrackerSettings');
+            if (savedSettings) {
+                try {
+                    console.log("Found saved settings in localStorage, processing...");
+                    const localSettings = JSON.parse(savedSettings);
+                    
+                    // Merge with any settings we already loaded from URL
+                    settings.referenceSpawns = [...(settings.referenceSpawns || []), ...(localSettings.referenceSpawns || [])];
+                    
+                    // Ensure we have timezone information
+                    if (!settings.timezone) {
+                        settings.timezone = localSettings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    }
+                    
+                    console.log("Local settings processed, reference spawns:", settings.referenceSpawns.length);
+                } catch (e) {
+                    console.error("Error loading local settings:", e);
+                }
+            }
+            
+            // Try to fetch from GitHub even if we have local data
+            // This ensures we always have the latest data
+            await fetchFromGitHub();
+            
+            console.log("Settings loading complete, total reference spawns:", settings.referenceSpawns.length);
+        }
+        
+        // Also fetch from GitHub Gist on initial load
+        async function fetchFromGitHub() {
+            console.log("Fetching data from GitHub Gist...");
+            try {
+                // Get the Gist ID either from URL parameters or localStorage
+                const urlParams = new URLSearchParams(window.location.search);
+                const gistParam = urlParams.get('gist');
+                
+                const gistId = gistParam || localStorage.getItem('githubGistId');
+                
+                if (!gistId) {
+                    console.log("No Gist ID available, skipping GitHub fetch");
+                    return; // No Gist ID available
+                }
+                
+                console.log("Found Gist ID, fetching:", gistId);
+                
+                // If gist ID was in URL, save it for future use
+                if (gistParam) {
+                    localStorage.setItem('githubGistId', gistParam);
+                    // Remove from URL for cleaner sharing
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                const response = await fetch(`https://api.github.com/gists/${gistId}`);
+                if (response.ok) {
+                    console.log("GitHub API request successful");
+                    const data = await response.json();
+                    
+                    // Get the content of the first file in the gist
+                    const fileKey = Object.keys(data.files)[0];
+                    const content = data.files[fileKey].content;
+                    
+                    const gistData = JSON.parse(content);
+                    console.log("Gist data parsed successfully");
+                    
+                    // Handle the history array
+                    if (gistData.referenceSpawns && gistData.referenceSpawns.length > 0) {
+                        console.log("Found reference spawns in Gist:", gistData.referenceSpawns.length);
+                        
+                        // Keep the reference history for display
+                        settings.referenceSpawns = [...gistData.referenceSpawns];
+                    } else {
+                        settings.referenceSpawns = [];
+                    }
+                    
+                    // Check if we have a latest spawn defined
+                    if (gistData.latestSpawn) {
+                        console.log("Found latest spawn reference:", gistData.latestSpawn);
+                        settings.latestSpawn = gistData.latestSpawn;
+                    } 
+                    // If no latestSpawn but we have referenceSpawns, use the most recent
+                    else if (settings.referenceSpawns.length > 0) {
+                        // Sort by time, newest first
+                        const sortedSpawns = [...settings.referenceSpawns].sort((a, b) => 
+                            new Date(b.time).getTime() - new Date(a.time).getTime()
+                        );
+                        
+                        settings.latestSpawn = sortedSpawns[0];
+                        console.log("Using most recent spawn as latest:", settings.latestSpawn);
+                    } else {
+                        settings.latestSpawn = null;
+                    }
+                    
+                    // Save to localStorage
+                    localStorage.setItem('spawnTrackerSettings', JSON.stringify(settings));
+                    
+                    // Display success message
+                    const alertBox = document.getElementById('alert-box');
+                    alertBox.textContent = `Loaded latest spawn data from server!`;
+                    alertBox.classList.remove('hidden');
+                    setTimeout(() => {
+                        alertBox.classList.add('hidden');
+                    }, 5000);
+                    
+                    // Update the display
+                    updateAllDisplays();
+                } else {
+                    console.error("GitHub API request failed:", response.status);
+                }
+            } catch (e) {
+                console.error("Error fetching from GitHub:", e);
+                // Silently fail - we'll just use default values if GitHub fetch fails
+            }
+        }
+        
+        // Display reference spawns in the UI (admin panel now)
+        function displayReferenceSpawns() {
+            // Now handled by displayPublicEntries
+            fetchPublicGistData();
+        }
+        
+        // Time formatting with timezone support
+        function formatTime(date) {
+            const options = { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true,
+                timeZone: settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+            };
+            return new Intl.DateTimeFormat('en-US', options).format(date);
+        }
+        
+        function formatTimeHour(date) {
+            const options = { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true,
+                timeZone: settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+            };
+            
+            // Create a new date with minutes set to 0
+            const hourDate = new Date(date);
+            hourDate.setMinutes(0, 0, 0);
+            
+            return new Intl.DateTimeFormat('en-US', options).format(hourDate);
+        }
+        
+        // Calculate time until next spawn (20 minute cycle starting at 00, 20, 40 minutes past the hour)
+        function updateCountdownTimer() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // Calculate next spawn time
+            let nextSpawnMinutes;
+            if (minutes < 20) {
+                nextSpawnMinutes = 20;
+            } else if (minutes < 40) {
+                nextSpawnMinutes = 40;
+            } else {
+                nextSpawnMinutes = 0;
+            }
+            
+            // Create next spawn time
+            const nextSpawn = new Date(now);
+            nextSpawn.setMinutes(nextSpawnMinutes, 0, 0);
+            
+            // If we're going to the next hour
+            if (minutes >= 40) {
+                nextSpawn.setHours(nextSpawn.getHours() + 1);
+            }
+            
+            // Calculate remaining time
+            let remainingMs = nextSpawn - now;
+            
+            // Format the countdown
+            const remainingMinutes = Math.floor(remainingMs / 60000);
+            const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+            
+            const countdownDisplay = `${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            document.getElementById('countdown-timer').textContent = countdownDisplay;
+        }
+        
+        // Get a UTC date string (YYYY-MM-DD) from a date object - for consistent date comparisons
+        function getUTCDateString(date) {
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        }
+        
+        // Calculate spawn locations for a given time
+        function calculateSpawnLocations(date) {
+            console.log("Calculating spawn locations for:", date.toISOString());
+            
+            // Handle the 9PM CST special case
+            if (is9PMCST(date)) {
+                console.log("Detected 9PM CST - using 8PM spawn instead");
+                // Create a copy of the date set to 1 hour earlier
+                const oneHourEarlier = new Date(date.getTime() - (60 * 60 * 1000));
+                return calculateSpawnLocations(oneHourEarlier);
+            }
+            
+            // Try to get the latest reference point
+            const latestReference = getLatestReferencePoint();
+            
+            if (!latestReference) {
+                // Default pattern if no reference points
+                const hourOfDay = getCSTHour(date) + HOUR_CORRECTION;
+                const dayOfWeek = date.getDay();
+                
+                // Use the current hour and day to determine a predictable but varying pattern
+                const chestIndex = (hourOfDay + dayOfWeek) % CHEST_LOCATIONS.length;
+                const miningIndex = (hourOfDay + dayOfWeek + 2) % MINING_LOCATIONS.length;
+                
+                console.log(`Using default pattern - Hour: ${hourOfDay}, day: ${dayOfWeek}, chest index: ${chestIndex}, mining index: ${miningIndex}`);
+                
+                return {
+                    chest: CHEST_LOCATIONS[chestIndex >= 0 ? chestIndex : (chestIndex + CHEST_LOCATIONS.length)],
+                    mining: MINING_LOCATIONS[miningIndex >= 0 ? miningIndex : (miningIndex + MINING_LOCATIONS.length)]
+                };
+            }
+            
+            // Use the latest reference point directly
+            console.log("Using latest reference point:", latestReference);
+            
+            // Calculate hours elapsed since the reference
+            const refDate = new Date(latestReference.time);
+            
+            // Calculate hours since reference using CST hours with correction
+            const refCSTHour = getCSTHour(refDate) + HOUR_CORRECTION;
+            const targetCSTHour = getCSTHour(date) + HOUR_CORRECTION;
+            
+            // Calculate hours difference, accounting for day boundary crossings
+            let hoursSinceRef;
+            if (getUTCDateString(refDate) === getUTCDateString(date)) {
+                // Same UTC day
+                hoursSinceRef = targetCSTHour - refCSTHour;
+            } else {
+                // Different UTC days
+                const hoursDiff = targetCSTHour - refCSTHour;
+                const daysDiff = Math.floor((date.getTime() - refDate.getTime()) / (24 * 60 * 60 * 1000));
+                hoursSinceRef = hoursDiff + (daysDiff * 24);
+            }
+            
+            console.log("Reference CST hour:", refCSTHour);
+            console.log("Target CST hour:", targetCSTHour);
+            console.log("Hours since reference:", hoursSinceRef);
+            
+            // If this is a chest reference
+            if (latestReference.type === 'chest') {
+                // Get the current chest index
+                const chestIndex = CHEST_LOCATIONS.indexOf(latestReference.location);
+                if (chestIndex === -1) return { chest: "Unknown", mining: "Unknown" };
+                
+                // Calculate new chest index based on hours elapsed
+                const newChestIndex = (chestIndex + hoursSinceRef) % CHEST_LOCATIONS.length;
+                
+                // Mining nodes are offset by the same pattern
+                const miningIndex = (chestIndex + hoursSinceRef) % MINING_LOCATIONS.length;
+                
+                console.log(`Reference chest: ${latestReference.location} (index ${chestIndex}), new chest index: ${newChestIndex}, mining index: ${miningIndex}`);
+                
+                return {
+                    chest: CHEST_LOCATIONS[newChestIndex >= 0 ? newChestIndex : (newChestIndex + CHEST_LOCATIONS.length)],
+                    mining: MINING_LOCATIONS[miningIndex >= 0 ? miningIndex : (miningIndex + MINING_LOCATIONS.length)]
+                };
+            } 
+            // If this is a mining reference
+            else if (latestReference.type === 'mining') {
+                // Get the current mining index
+                const miningIndex = MINING_LOCATIONS.indexOf(latestReference.location);
+                if (miningIndex === -1) return { chest: "Unknown", mining: "Unknown" };
+                
+                // Calculate new mining index based on hours elapsed
+                const newMiningIndex = (miningIndex + hoursSinceRef) % MINING_LOCATIONS.length;
+                
+                // Chest locations are offset by the same pattern
+                const chestIndex = (miningIndex + hoursSinceRef) % CHEST_LOCATIONS.length;
+                
+                console.log(`Reference mining: ${latestReference.location} (index ${miningIndex}), new mining index: ${newMiningIndex}, chest index: ${chestIndex}`);
+                
+                return {
+                    chest: CHEST_LOCATIONS[chestIndex >= 0 ? chestIndex : (chestIndex + CHEST_LOCATIONS.length)],
+                    mining: MINING_LOCATIONS[newMiningIndex >= 0 ? newMiningIndex : (newMiningIndex + MINING_LOCATIONS.length)]
+                };
+            }
+            
+            return { chest: "Unknown", mining: "Unknown" };
+        }
+        
+        // Get the latest reference point
+        function getLatestReferencePoint() {
+            // First check if we have a latestSpawn entry
+            if (settings.latestSpawn) {
+                return settings.latestSpawn;
+            }
+            
+            // Otherwise get the most recent entry from referenceSpawns
+            if (!settings.referenceSpawns || settings.referenceSpawns.length === 0) {
+                return null;
+            }
+            
+            // Sort by time, newest first
+            const sortedSpawns = [...settings.referenceSpawns].sort((a, b) => 
+                new Date(b.time).getTime() - new Date(a.time).getTime()
+            );
+            
+            return sortedSpawns[0];
+        }
+        
+        // Update the main spawn display (previous, current, next)
+        function updateSpawnDisplay() {
             const now = new Date();
             
-            try {
-                // Calculate how many hours have passed since reference time
-                let hoursDiff = Math.floor((now - REFERENCE_DATE_CST) / (1000 * 60 * 60));
-                
-                // Handle negative time (before reference)
-                while (hoursDiff < 0) {
-                    hoursDiff += ROTATIONS.length;
-                }
-                
-                // Calculate current rotation
-                let currentRotationIndex = (REFERENCE_ROTATION_INDEX + hoursDiff) % ROTATIONS.length;
-                
-                if (currentRotationIndex < 0 || currentRotationIndex >= ROTATIONS.length) {
-                    console.error("Invalid rotation index calculated:", currentRotationIndex);
-                    // Fallback to a safe index
-                    currentRotationIndex = 0;
-                }
-                
-                // Calculate minutes within the current hour
-                const currentHourStart = new Date(now);
-                currentHourStart.setMinutes(0, 0, 0);
-                const minutesIntoHour = (now - currentHourStart) / (1000 * 60);
-                
-                // Calculate which spawn interval we're in
-                const spawnIntervalIndex = Math.floor(minutesIntoHour / SPAWN_INTERVAL);
-                
-                // Calculate time until next spawn
-                const minutesSinceLastSpawn = minutesIntoHour % SPAWN_INTERVAL;
-                const minutesUntilNextSpawn = SPAWN_INTERVAL - minutesSinceLastSpawn;
-                
-                // Calculate spawn times
-                const currentSpawnTime = new Date(now.getTime() - minutesSinceLastSpawn * 60 * 1000);
-                const previousSpawnTime = new Date(currentSpawnTime.getTime() - SPAWN_INTERVAL * 60 * 1000);
-                const nextSpawnTime = new Date(currentSpawnTime.getTime() + SPAWN_INTERVAL * 60 * 1000);
-                
-                // Check if previous or next spawn crosses an hour boundary (rotation change)
-                const currentHour = currentSpawnTime.getHours();
-                const previousHour = previousSpawnTime.getHours();
-                const nextHour = nextSpawnTime.getHours();
-                
-                // Special handling for time zone conversion
-                const userOffset = now.getTimezoneOffset();
-                const cstOffset = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }).includes('CDT') ? 300 : 360;
-                const diffFromCST = userOffset - cstOffset;
-                
-                // Convert times to CST for special case handling
-                const currentTimeCst = new Date(currentSpawnTime);
-                currentTimeCst.setMinutes(currentTimeCst.getMinutes() - diffFromCST);
-                const previousTimeCst = new Date(previousSpawnTime);
-                previousTimeCst.setMinutes(previousTimeCst.getMinutes() - diffFromCST);
-                const nextTimeCst = new Date(nextSpawnTime);
-                nextTimeCst.setMinutes(nextTimeCst.getMinutes() - diffFromCST);
-                
-                // Default calculation (normal case)
-                let previousRotationIndex = previousHour !== currentHour
-                    ? (currentRotationIndex - 1 + ROTATIONS.length) % ROTATIONS.length
-                    : currentRotationIndex;
-                    
-                let nextRotationIndex = nextHour !== currentHour
-                    ? (currentRotationIndex + 1) % ROTATIONS.length
-                    : currentRotationIndex;
-                
-                // Special case: If we're at 9PM CST and the next hour is 10PM CST,
-                // skip a rotation for the next spawn
-                if (currentTimeCst.getHours() === 21 && nextTimeCst.getHours() === 22) {
-                    nextRotationIndex = (currentRotationIndex + 2) % ROTATIONS.length;
-                    console.log("Applied post-9PM CST skip for next spawn");
-                }
-                
-                // Special case: If we're at 10PM CST and the previous hour was 9PM CST,
-                // the previous rotation should be the 9PM override, not the normal rotation-1
-                if (currentTimeCst.getHours() === 22 && previousTimeCst.getHours() === 21) {
-                    previousRotationIndex = -1; // Special marker for the override
-                }
-                
-                // Safety checks for rotation indices
-                if (previousRotationIndex >= 0 && (previousRotationIndex < 0 || previousRotationIndex >= ROTATIONS.length)) {
-                    previousRotationIndex = 0;
-                }
-                
-                if (nextRotationIndex < 0 || nextRotationIndex >= ROTATIONS.length) {
-                    nextRotationIndex = 0;
-                }
-                
-                // Prepare result
-                let result = {
-                    current: {
-                        rotation: ROTATIONS[currentRotationIndex],
-                        time: currentSpawnTime,
-                        index: currentRotationIndex
-                    },
-                    previous: {
-                        rotation: previousRotationIndex >= 0 ? ROTATIONS[previousRotationIndex] : {
-                            name: "Override Pattern",
-                            chest: "Arkeum",
-                            mine: "Orc Village"
-                        },
-                        time: previousSpawnTime,
-                        index: previousRotationIndex >= 0 ? previousRotationIndex : -1
-                    },
-                    next: {
-                        rotation: ROTATIONS[nextRotationIndex],
-                        time: nextSpawnTime,
-                        index: nextRotationIndex
-                    },
-                    minutesUntilNextSpawn,
-                    spawnIntervalIndex
-                };
-                
-                // Apply 9PM CST override if needed
-                if (currentTimeCst.getHours() === 21) {
-                    result.current.rotation = {
-                        name: "Override Pattern",
-                        chest: "Arkeum",
-                        mine: "Orc Village"
-                    };
-                    result.current.index = -1;
-                }
-                // Apply 10PM CST case - we just use the Seal/Shrine pattern (Pattern 3)
-                else if (currentTimeCst.getHours() === 22) {
-                    result.current.rotation = ROTATIONS[2];
-                    result.current.index = 2;
-                }
-                
-                return result;
-                
-            } catch (error) {
-                console.error("Error calculating current info:", error);
-                // Return fallback data
-                return {
-                    current: {
-                        rotation: ROTATIONS[0],
-                        time: now,
-                        index: 0
-                    },
-                    previous: {
-                        rotation: ROTATIONS[3],
-                        time: new Date(now.getTime() - SPAWN_INTERVAL * 60 * 1000),
-                        index: 3
-                    },
-                    next: {
-                        rotation: ROTATIONS[1],
-                        time: new Date(now.getTime() + SPAWN_INTERVAL * 60 * 1000),
-                        index: 1
-                    },
-                    minutesUntilNextSpawn: 20,
-                    spawnIntervalIndex: 0
-                };
+            // Get the current hour in user's local time
+            const currentHour = now.getHours();
+            
+            // Create dates for previous, current, and next hour in local time
+            const currentHourTime = new Date(now);
+            currentHourTime.setMinutes(0, 0, 0); // Set to the start of the current hour
+            
+            const previousHourTime = new Date(currentHourTime);
+            previousHourTime.setHours(currentHour - 1);
+            
+            const nextHourTime = new Date(currentHourTime);
+            nextHourTime.setHours(currentHour + 1);
+            
+            console.log("Previous hour:", previousHourTime.toISOString());
+            console.log("Current hour:", currentHourTime.toISOString());
+            console.log("Next hour:", nextHourTime.toISOString());
+            
+            // Get spawn info for each time
+            const previousSpawn = calculateSpawnLocations(previousHourTime);
+            const currentSpawn = calculateSpawnLocations(currentHourTime);
+            const nextSpawn = calculateSpawnLocations(nextHourTime);
+            
+            // Update display with icons
+            document.getElementById('previous-time').textContent = formatTimeHour(previousHourTime);
+            document.getElementById('previous-chest').textContent = `📦 ${previousSpawn.chest}`;
+            document.getElementById('previous-mining').textContent = `💎 ${previousSpawn.mining}`;
+            
+            document.getElementById('current-spawn-time').textContent = formatTimeHour(currentHourTime);
+            document.getElementById('current-chest').textContent = `📦 ${currentSpawn.chest}`;
+            document.getElementById('current-mining').textContent = `💎 ${currentSpawn.mining}`;
+            
+            document.getElementById('next-time').textContent = formatTimeHour(nextHourTime);
+            document.getElementById('next-chest').textContent = `📦 ${nextSpawn.chest}`;
+            document.getElementById('next-mining').textContent = `💎 ${nextSpawn.mining}`;
+            
+            // Show alert if it's 9PM CST
+            const alertBox = document.getElementById('alert-box');
+            if (is9PMCST(now)) {
+                alertBox.classList.remove('hidden');
+            } else {
+                alertBox.classList.add('hidden');
             }
         }
         
-        // Format time
-        function formatTime(date) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        // Format countdown
-        function formatCountdown(minutes, seconds) {
-            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        
-        // Update the UI with spawn information
-        function updateUI() {
-            try {
-                const spawnInfo = calculateCurrentInfo();
-                const now = new Date();
+        // Update the schedule table
+        function updateScheduleTable() {
+            const now = new Date();
+            const scheduleBody = document.getElementById('schedule-body');
+            scheduleBody.innerHTML = '';
+            
+            // Start at the current hour in user's timezone
+            const currentHour = now.getHours();
+            
+            console.log("Generating schedule table starting from hour:", currentHour);
+            
+            // Show current spawn and next 10 spawns (11 total)
+            for (let i = 0; i < 11; i++) {
+                const hour = (currentHour + i) % 24; // Wrap around at 24 to stay within 0-23
                 
-                // Make sure we have valid rotation objects
-                if (!spawnInfo.current.rotation || !spawnInfo.previous.rotation || !spawnInfo.next.rotation) {
-                    console.error("Missing rotation object in spawn info");
-                    return; // Skip update if data is invalid
-                }
+                // Create a date object for this hour
+                const hourTime = new Date(now);
+                hourTime.setHours(hour, 0, 0, 0);
                 
-                // Update current time
-                document.getElementById('current-time').textContent = formatTime(now);
-                
-                // Update locations
-                document.getElementById('previous-chest-location').textContent = spawnInfo.previous.rotation.chest || "Unknown";
-                document.getElementById('previous-mine-location').textContent = spawnInfo.previous.rotation.mine || "Unknown";
-                
-                document.getElementById('current-chest-location').textContent = spawnInfo.current.rotation.chest || "Unknown";
-                document.getElementById('current-mine-location').textContent = spawnInfo.current.rotation.mine || "Unknown";
-                
-                document.getElementById('next-chest-location').textContent = spawnInfo.next.rotation.chest || "Unknown";
-                document.getElementById('next-mine-location').textContent = spawnInfo.next.rotation.mine || "Unknown";
-                
-                // Update times
-                document.getElementById('previous-time').textContent = formatTime(spawnInfo.previous.time);
-                document.getElementById('current-time-slot').textContent = formatTime(spawnInfo.current.time);
-                document.getElementById('next-time').textContent = formatTime(spawnInfo.next.time);
-                
-                // Update countdown
-                const minutes = Math.floor(spawnInfo.minutesUntilNextSpawn);
-                const seconds = Math.floor((spawnInfo.minutesUntilNextSpawn - minutes) * 60);
-                document.getElementById('next-spawn-countdown').textContent = `Next Spawn: ${formatCountdown(minutes, seconds)}`;
-                
-                // Update last updated time
-                document.getElementById('last-updated').textContent = now.toLocaleString();
-            } catch (error) {
-                console.error("Error updating UI:", error);
-            }
-        }
-        
-        // Helper function to create a schedule row
-        function createScheduleRow(time, rotation, isCurrent) {
-            try {
-                if (!rotation || typeof rotation !== 'object') {
-                    console.error("Invalid rotation object:", rotation);
-                    return document.createElement('tr'); // Return empty row
-                }
+                console.log(`Creating row for hour ${hour}`);
                 
                 const row = document.createElement('tr');
-                if (isCurrent) {
+                
+                // Highlight current hour
+                if (i === 0) {
                     row.classList.add('current');
                 }
                 
-                // Time cell
+                // Mark 9PM CST as special
+                if (is9PMCST(hourTime)) {
+                    row.classList.add('nine-pm');
+                }
+                
+                const spawn = calculateSpawnLocations(hourTime);
+                
                 const timeCell = document.createElement('td');
-                timeCell.textContent = formatTime(time);
-                row.appendChild(timeCell);
+                timeCell.textContent = formatTimeHour(hourTime);
                 
-                // Chest location cell
                 const chestCell = document.createElement('td');
-                const chestIndicator = document.createElement('span');
-                chestIndicator.innerHTML = '<i class="fas fa-box-open"></i> CHEST';
-                chestIndicator.className = "type-indicator chest";
-                chestCell.appendChild(chestIndicator);
-                chestCell.appendChild(document.createTextNode(" " + (rotation.chest || "Unknown")));
+                chestCell.textContent = `📦 ${spawn.chest}`;
+                
+                const miningCell = document.createElement('td');
+                miningCell.textContent = `💎 ${spawn.mining}`;
+                
+                row.appendChild(timeCell);
                 row.appendChild(chestCell);
+                row.appendChild(miningCell);
                 
-                // Mining location cell
-                const mineCell = document.createElement('td');
-                const mineIndicator = document.createElement('span');
-                mineIndicator.innerHTML = '<i class="fas fa-gem"></i> MINE';
-                mineIndicator.className = "type-indicator mine";
-                mineCell.appendChild(mineIndicator);
-                mineCell.appendChild(document.createTextNode(" " + (rotation.mine || "Unknown")));
-                row.appendChild(mineCell);
-                
-                return row;
-            } catch (error) {
-                console.error("Error creating schedule row:", error);
-                return document.createElement('tr'); // Return empty row on error
+                scheduleBody.appendChild(row);
             }
         }
         
-        // Toggle schedule visibility and generate fresh content
-        function toggleSchedule() {
-            try {
-                const scheduleContainer = document.getElementById('schedule-container');
-                const isVisible = scheduleContainer.style.display !== 'none';
+        // Update current time display
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 'Current Time: ' + formatTime(now);
+        }
+        
+        // Update all displays
+        function updateAllDisplays() {
+            console.log("Updating all displays with current data...");
+            console.log("Current reference spawns:", settings.referenceSpawns ? settings.referenceSpawns.length : 0);
+            
+            updateCurrentTime();
+            updateCountdownTimer();
+            updateSpawnDisplay();
+            updateScheduleTable();
+        }
+        
+        // Remove unused sharing functions since we removed those UI elements
+        function showAdminAlert(message, isSuccess) {
+            const alert = document.getElementById('admin-alert');
+            alert.textContent = message;
+            alert.classList.remove('hidden');
+            
+            if (isSuccess) {
+                alert.classList.add('alert-success');
+            } else {
+                alert.classList.remove('alert-success');
+            }
+            
+            setTimeout(() => {
+                alert.classList.add('hidden');
+            }, 5000); // Show longer than other alerts
+        }
+        
+        // Verify admin password
+        function verifyAdminPassword() {
+            const password = document.getElementById('admin-password').value;
+            if (password === GITHUB_ADMIN_PASSWORD) {
+                document.getElementById('admin-password-form').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
                 
-                scheduleContainer.style.display = isVisible ? 'none' : 'block';
+                // Load GitHub credentials if stored
+                loadGitHubCredentials();
                 
-                // Generate schedule if it's being shown
-                if (!isVisible) {
-                    generateSchedule();
-                }
-            } catch (error) {
-                console.error("Error toggling schedule:", error);
+                // Load the most recent public gist entries
+                fetchPublicGistData();
+            } else {
+                alert("Incorrect admin password. Please try again.");
             }
         }
         
-        // Generate schedule starting from the current time
-        function generateSchedule() {
+        // Simple encryption/decryption for GitHub token
+        // Note: This is not secure for production use, just a basic obfuscation
+        function encryptToken(token, password) {
+            let result = '';
+            for (let i = 0; i < token.length; i++) {
+                result += String.fromCharCode(token.charCodeAt(i) ^ password.charCodeAt(i % password.length));
+            }
+            return btoa(result); // Base64 encode
+        }
+        
+        function decryptToken(encrypted, password) {
+            const decoded = atob(encrypted); // Base64 decode
+            let result = '';
+            for (let i = 0; i < decoded.length; i++) {
+                result += String.fromCharCode(decoded.charCodeAt(i) ^ password.charCodeAt(i % password.length));
+            }
+            return result;
+        }
+        
+        // Save GitHub credentials
+        function saveGitHubCredentials() {
+            const token = document.getElementById('github-token').value;
+            const gistId = document.getElementById('github-gist-id').value;
+            
+            if (!token || !gistId) {
+                showAdminAlert('Please enter both a GitHub token and Gist ID', false);
+                return;
+            }
+            
+            // Encrypt the token with the admin password
+            const encryptedToken = encryptToken(token, GITHUB_ADMIN_PASSWORD);
+            
+            // Save to localStorage
+            localStorage.setItem('githubToken', encryptedToken);
+            localStorage.setItem('githubGistId', gistId);
+            
+            showAdminAlert('GitHub credentials saved successfully!', true);
+            
+            // Clear the token field for security
+            document.getElementById('github-token').value = '';
+        }
+        
+        // Load GitHub credentials
+        function loadGitHubCredentials() {
+            const encryptedToken = localStorage.getItem('githubToken');
+            const gistId = localStorage.getItem('githubGistId');
+            
+            if (gistId) {
+                document.getElementById('github-gist-id').value = gistId;
+            }
+            
+            // We don't display the token for security reasons
+        }
+        
+        // Fetch public Gist data
+        async function fetchPublicGistData() {
+            console.log("Fetching public Gist data for display...");
+            const gistId = localStorage.getItem('githubGistId');
+            
+            if (!gistId) {
+                showAdminAlert('No GitHub Gist ID configured', false);
+                console.log("No Gist ID configured");
+                return;
+            }
+            
             try {
-                console.log("Generating schedule");
-                const scheduleBody = document.getElementById('schedule-body');
-                scheduleBody.innerHTML = '';
-                
-                // Get current time and spawn info
-                const now = new Date();
-                const spawnInfo = calculateCurrentInfo();
-                
-                // Ensure we have valid data
-                if (!spawnInfo || !spawnInfo.current || !spawnInfo.current.rotation) {
-                    console.error("Invalid spawn info for schedule generation");
-                    return;
-                }
-                
-                // Start with the current spawn time
-                const currentSpawnTime = spawnInfo.current.time;
-                let rotationIndex = spawnInfo.current.index;
-                let rotation = ROTATIONS[rotationIndex];
-                
-                if (!rotation) {
-                    console.error("Invalid rotation for index:", rotationIndex);
-                    return;
-                }
-                
-                // Generate rows starting with current spawn
-                const entries = [];
-                
-                // First add current spawn (highlighted)
-                let currentRow;
-                
-                // Check if we need to apply the 9PM CST override
-                const userTimeToCst = new Date(now.getTime());
-                const userOffset = userTimeToCst.getTimezoneOffset();
-                const cstOffset = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }).includes('CDT') ? 300 : 360;
-                const diffFromCST = userOffset - cstOffset;
-                userTimeToCst.setMinutes(userTimeToCst.getMinutes() - diffFromCST);
-                const cstHour = userTimeToCst.getHours();
-                
-                // Apply 9PM CST override if needed
-                if (cstHour === 21) {
-                    currentRow = createScheduleRow(currentSpawnTime, {
-                        name: "Override Pattern",
-                        chest: "Arkeum",
-                        mine: "Orc Village"
-                    }, true);
+                console.log("Fetching from Gist ID:", gistId);
+                const response = await fetch(`https://api.github.com/gists/${gistId}`);
+                if (response.ok) {
+                    console.log("Gist fetch successful");
+                    const data = await response.json();
+                    
+                    // Get the content of the first file in the gist
+                    const fileKey = Object.keys(data.files)[0];
+                    const content = data.files[fileKey].content;
+                    
+                    const gistData = JSON.parse(content);
+                    console.log("Parsed Gist data, found spawns:", gistData.referenceSpawns ? gistData.referenceSpawns.length : 0);
+                    
+                    // Display the public entries
+                    displayPublicEntries(gistData.referenceSpawns || []);
                 } else {
-                    currentRow = createScheduleRow(currentSpawnTime, rotation, true);
+                    const errorMsg = `Error fetching Gist: ${response.status}`;
+                    showAdminAlert(errorMsg, false);
+                    console.error(errorMsg);
                 }
+            } catch (e) {
+                const errorMsg = `Error: ${e.message}`;
+                showAdminAlert(errorMsg, false);
+                console.error(errorMsg);
+            }
+        }
+        
+        // Display public entries
+        function displayPublicEntries(entries) {
+            const entriesContainer = document.getElementById('public-entries');
+            entriesContainer.innerHTML = '';
+            
+            if (!entries || entries.length === 0) {
+                entriesContainer.innerHTML = '<p>No public spawn data available.</p>';
+                return;
+            }
+            
+            // Sort by date, newest first
+            entries.sort((a, b) => new Date(b.time) - new Date(a.time));
+            
+            // Show the 10 most recent entries
+            const recentEntries = entries.slice(0, 10);
+            
+            recentEntries.forEach(spawn => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'entry';
                 
-                entries.push(currentRow);
+                const date = new Date(spawn.time);
+                const formattedDate = `${date.toLocaleDateString()} ${formatTime(date)}`;
                 
-                // Generate entries for next 12 hours (36 entries total - we already added the current one)
-                let scheduleTime = new Date(currentSpawnTime);
-                
-                for (let i = 0; i < 35; i++) {
-                    // Move to next spawn time
-                    scheduleTime = new Date(scheduleTime.getTime() + SPAWN_INTERVAL * 60 * 1000);
-                    
-                    // Convert schedule time to CST for checking special cases
-                    const scheduleTimeToCst = new Date(scheduleTime.getTime());
-                    scheduleTimeToCst.setMinutes(scheduleTimeToCst.getMinutes() - diffFromCST);
-                    const scheduleHourCst = scheduleTimeToCst.getHours();
-                    
-                    // Check if we need to update rotation (hour change)
-                    const hourChanged = Math.floor(scheduleTime.getTime() / (1000 * 60 * 60)) > 
-                                        Math.floor((scheduleTime.getTime() - SPAWN_INTERVAL * 60 * 1000) / (1000 * 60 * 60));
-                    
-                    if (hourChanged) {
-                        // Special case: if we're moving from 9PM CST to 10PM CST, skip the next rotation
-                        // and go directly to the following one
-                        const prevSchedTimeToCst = new Date(scheduleTime.getTime() - SPAWN_INTERVAL * 60 * 1000);
-                        prevSchedTimeToCst.setMinutes(prevSchedTimeToCst.getMinutes() - diffFromCST);
-                        
-                        if (prevSchedTimeToCst.getHours() === 21 && scheduleHourCst === 22) {
-                            // Skip the next rotation (add 2 instead of 1)
-                            rotationIndex = (rotationIndex + 2) % ROTATIONS.length;
-                            console.log("Applied post-9PM CST skip, new index:", rotationIndex);
-                        } else {
-                            rotationIndex = (rotationIndex + 1) % ROTATIONS.length;
-                        }
-                    }
-                    
-                // Apply 9PM CST override if needed
-                if (scheduleHourCst === 21) {
-                    const row = createScheduleRow(scheduleTime, {
-                        name: "Override Pattern",
-                        chest: "Arkeum",
-                        mine: "Orc Village"
-                    }, false);
-                    entries.push(row);
-                } else if (scheduleHourCst === 22) {
-                    // At 10PM CST, the pattern is: Seal of Sanctuary (chest) and Shrine of Devotion (mine)
-                    // This is actually the same as Pattern 3
-                    const row = createScheduleRow(scheduleTime, ROTATIONS[2], false);
-                    entries.push(row);
+                let spawnInfo;
+                if (spawn.type === 'chest') {
+                    spawnInfo = `<span style="color: #fd79a8;">📦 ${spawn.location}</span>`;
                 } else {
-                    rotation = ROTATIONS[rotationIndex];
-                    if (rotation) {
-                        const row = createScheduleRow(scheduleTime, rotation, false);
-                        entries.push(row);
-                    }
-                }
+                    spawnInfo = `<span style="color: #00cec9;">💎 ${spawn.location}</span>`;
                 }
                 
-                // Add all rows to the schedule body
-                entries.forEach(row => {
-                    scheduleBody.appendChild(row);
+                entryDiv.innerHTML = `
+                    <div>
+                        <strong>${formattedDate}</strong>: ${spawnInfo}
+                    </div>
+                `;
+                
+                entriesContainer.appendChild(entryDiv);
+            });
+        }
+        
+        // Update public Gist
+        async function updatePublicGist() {
+            const gistId = localStorage.getItem('githubGistId');
+            const encryptedToken = localStorage.getItem('githubToken');
+            
+            if (!gistId || !encryptedToken) {
+                showAdminAlert('GitHub credentials not configured', false);
+                return;
+            }
+            
+            // Get the spawn data
+            const spawnTime = document.getElementById('admin-spawn-time').value;
+            if (!spawnTime) {
+                showAdminAlert('Please select a date and time', false);
+                return;
+            }
+            
+            const updateType = document.getElementById('admin-update-type').value;
+            let location;
+            
+            if (updateType === 'chest') {
+                location = document.getElementById('admin-chest-location').value;
+            } else {
+                location = document.getElementById('admin-mining-location').value;
+            }
+            
+            // Decrypt the token
+            const token = decryptToken(encryptedToken, GITHUB_ADMIN_PASSWORD);
+            
+            try {
+                // First, get the current Gist content
+                const getResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: {
+                        'Authorization': `token ${token}`
+                    }
                 });
                 
-                console.log("Schedule generated with", entries.length, "entries");
-            } catch (error) {
-                console.error("Error generating schedule:", error);
-            }
-        }
-        
-        // Initialize the application
-        function init() {
-            try {
-                console.log("Initializing tracker");
-                
-                // Initial UI update
-                updateUI();
-                
-                // Set up periodic updates for the main display
-                setInterval(updateUI, 1000);
-                
-                // Set up event listener for schedule toggle
-                const toggleBtn = document.getElementById('toggle-schedule-btn');
-                if (toggleBtn) {
-                    toggleBtn.addEventListener('click', function() {
-                        console.log("Toggle button clicked");
-                        toggleSchedule();
-                    });
-                } else {
-                    console.error("Toggle button not found");
+                if (!getResponse.ok) {
+                    throw new Error(`Error fetching Gist: ${getResponse.status}`);
                 }
                 
-                // Regenerate schedule every 20 minutes if it's visible
-                setInterval(() => {
-                    const container = document.getElementById('schedule-container');
-                    if (container && container.style.display !== 'none') {
-                        generateSchedule();
-                    }
-                }, 20 * 60 * 1000);
+                const gistData = await getResponse.json();
+                const fileKey = Object.keys(gistData.files)[0];
                 
-                console.log("Tracker initialized successfully");
-            } catch (error) {
-                console.error("Error initializing tracker:", error);
+                // Parse the current content or create new data structure
+                let spawnData;
+                try {
+                    spawnData = JSON.parse(gistData.files[fileKey].content);
+                    
+                    // Keep the history for display, but we'll only use the latest entry
+                    if (!spawnData.referenceSpawns) {
+                        spawnData.referenceSpawns = [];
+                    }
+                } catch (e) {
+                    spawnData = { referenceSpawns: [] };
+                }
+                
+                // SIMPLIFIED APPROACH: When the user enters a time in the datetime-local field,
+                // the browser already interprets it as the user's local time. We simply need
+                // to store it as UTC.
+                
+                // Create a Date object from the input (browser interprets as local time)
+                const localDate = new Date(spawnTime);
+                
+                // Format this as a display string for the user to see
+                const displayFormat = new Intl.DateTimeFormat('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                const displayTime = displayFormat.format(localDate);
+                
+                // Store the date as UTC ISO string - this preserves the exact time the user entered
+                const utcString = localDate.toISOString();
+                
+                console.log("Input local time:", spawnTime);
+                console.log("Formatted display time:", displayTime);
+                console.log("UTC time for storage:", utcString);
+                
+                // Create the new spawn entry
+                const newSpawn = {
+                    time: utcString,
+                    type: updateType,
+                    location: location,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+                };
+                
+                // Add to the history (for display purposes)
+                spawnData.referenceSpawns.push(newSpawn);
+                
+                // Store the current entry as the latest reference point
+                spawnData.latestSpawn = newSpawn;
+                
+                // Update the Gist
+                const updateResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            [fileKey]: {
+                                content: JSON.stringify(spawnData, null, 2)
+                            }
+                        }
+                    })
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error(`Error updating Gist: ${updateResponse.status}`);
+                }
+                
+                // Success! Show a notification
+                showAdminAlert(`Spawn data updated successfully! For ${displayTime}`, true);
+                
+                // Now fetch the updated data from GitHub
+                await fetchFromGitHub();
+                
+                // Display the latest public entries
+                fetchPublicGistData();
+                
+                // Update all displays with the new data
+                updateAllDisplays();
+                
+                // Clear the form
+                document.getElementById('admin-spawn-time').value = '';
+                
+                // Update the time conversion display
+                updateTimeConversionDisplay();
+                
+            } catch (e) {
+                showAdminAlert(`Error: ${e.message}`, false);
+                console.error("Error updating Gist:", e);
             }
         }
         
-        // Start the application when the page loads
-        window.addEventListener('load', init);
+        // Show the time conversion as the user selects a time
+        function updateTimeConversionDisplay() {
+            const timeInput = document.getElementById('admin-spawn-time');
+            const conversionDisplay = document.getElementById('time-conversion-display');
+            
+            if (timeInput.value) {
+                const selectedTime = new Date(timeInput.value);
+                
+                // Simply format the selected time - the user is expected to enter CST time
+                const options = { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true
+                };
+                
+                const formattedTime = new Intl.DateTimeFormat('en-US', options).format(selectedTime);
+                
+                conversionDisplay.textContent = `Your input will be treated as ${formattedTime} (your local time).`;
+            } else {
+                conversionDisplay.textContent = '';
+            }
+        }
+        
+        // Initialize event listeners after the DOM is loaded
+        window.onload = function() {
+            loadSettings();
+            updateAllDisplays();
+            
+            // Set default spawn time to current hour
+            const now = new Date();
+            now.setMinutes(0, 0, 0); // Round to current hour
+            
+            const localDateString = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+                
+            // Add event listener for admin-update-type
+            const adminUpdateType = document.getElementById('admin-update-type');
+            if (adminUpdateType) {
+                adminUpdateType.addEventListener('change', function() {
+                    const chestSelector = document.getElementById('admin-chest-selector');
+                    const miningSelector = document.getElementById('admin-mining-selector');
+                    
+                    if (this.value === 'chest') {
+                        chestSelector.classList.remove('hidden');
+                        miningSelector.classList.add('hidden');
+                    } else {
+                        chestSelector.classList.add('hidden');
+                        miningSelector.classList.remove('hidden');
+                    }
+                });
+            }
+            
+            // Set default admin spawn time if the element exists
+            const adminSpawnTime = document.getElementById('admin-spawn-time');
+            if (adminSpawnTime) {
+                adminSpawnTime.value = localDateString;
+                // Add event listener for time selection to update the time conversion display
+                adminSpawnTime.addEventListener('change', updateTimeConversionDisplay);
+                // Initialize the display
+                updateTimeConversionDisplay();
+            }
+            
+            // Update the current time and countdown every second
+            setInterval(() => {
+                updateCurrentTime();
+                updateCountdownTimer();
+            }, 1000);
+            
+            // Update spawn info every minute
+            setInterval(() => {
+                updateSpawnDisplay();
+                updateScheduleTable();
+            }, 60000);
+        };
     </script>
 </body>
 </html>
