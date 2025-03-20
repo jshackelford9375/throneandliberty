@@ -425,6 +425,20 @@
                 const previousHour = previousSpawnTime.getHours();
                 const nextHour = nextSpawnTime.getHours();
                 
+                // Special handling for time zone conversion
+                const userOffset = now.getTimezoneOffset();
+                const cstOffset = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }).includes('CDT') ? 300 : 360;
+                const diffFromCST = userOffset - cstOffset;
+                
+                // Convert times to CST for special case handling
+                const currentTimeCst = new Date(currentSpawnTime);
+                currentTimeCst.setMinutes(currentTimeCst.getMinutes() - diffFromCST);
+                const previousTimeCst = new Date(previousSpawnTime);
+                previousTimeCst.setMinutes(previousTimeCst.getMinutes() - diffFromCST);
+                const nextTimeCst = new Date(nextSpawnTime);
+                nextTimeCst.setMinutes(nextTimeCst.getMinutes() - diffFromCST);
+                
+                // Default calculation (normal case)
                 let previousRotationIndex = previousHour !== currentHour
                     ? (currentRotationIndex - 1 + ROTATIONS.length) % ROTATIONS.length
                     : currentRotationIndex;
@@ -433,8 +447,21 @@
                     ? (currentRotationIndex + 1) % ROTATIONS.length
                     : currentRotationIndex;
                 
+                // Special case: If we're at 9PM CST and the next hour is 10PM CST,
+                // skip a rotation for the next spawn
+                if (currentTimeCst.getHours() === 21 && nextTimeCst.getHours() === 22) {
+                    nextRotationIndex = (currentRotationIndex + 2) % ROTATIONS.length;
+                    console.log("Applied post-9PM CST skip for next spawn");
+                }
+                
+                // Special case: If we're at 10PM CST and the previous hour was 9PM CST,
+                // the previous rotation should be the 9PM override, not the normal rotation-1
+                if (currentTimeCst.getHours() === 22 && previousTimeCst.getHours() === 21) {
+                    previousRotationIndex = -1; // Special marker for the override
+                }
+                
                 // Safety checks for rotation indices
-                if (previousRotationIndex < 0 || previousRotationIndex >= ROTATIONS.length) {
+                if (previousRotationIndex >= 0 && (previousRotationIndex < 0 || previousRotationIndex >= ROTATIONS.length)) {
                     previousRotationIndex = 0;
                 }
                 
@@ -442,16 +469,21 @@
                     nextRotationIndex = 0;
                 }
                 
-                return {
+                // Prepare result
+                let result = {
                     current: {
                         rotation: ROTATIONS[currentRotationIndex],
                         time: currentSpawnTime,
                         index: currentRotationIndex
                     },
                     previous: {
-                        rotation: ROTATIONS[previousRotationIndex],
+                        rotation: previousRotationIndex >= 0 ? ROTATIONS[previousRotationIndex] : {
+                            name: "Override Pattern",
+                            chest: "Arkeum",
+                            mine: "Orc Village"
+                        },
                         time: previousSpawnTime,
-                        index: previousRotationIndex
+                        index: previousRotationIndex >= 0 ? previousRotationIndex : -1
                     },
                     next: {
                         rotation: ROTATIONS[nextRotationIndex],
@@ -461,6 +493,19 @@
                     minutesUntilNextSpawn,
                     spawnIntervalIndex
                 };
+                
+                // Apply 9PM CST override if needed
+                if (currentTimeCst.getHours() === 21) {
+                    result.current.rotation = {
+                        name: "Override Pattern",
+                        chest: "Arkeum",
+                        mine: "Orc Village"
+                    };
+                    result.current.index = -1;
+                }
+                
+                return result;
+                
             } catch (error) {
                 console.error("Error calculating current info:", error);
                 // Return fallback data
@@ -629,7 +674,27 @@
                 const entries = [];
                 
                 // First add current spawn (highlighted)
-                const currentRow = createScheduleRow(currentSpawnTime, rotation, true);
+                let currentRow;
+                
+                // Check if we need to apply the 9PM CST override
+                const userTimeToCst = new Date(now.getTime());
+                const userOffset = userTimeToCst.getTimezoneOffset();
+                const cstOffset = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }).includes('CDT') ? 300 : 360;
+                const diffFromCST = userOffset - cstOffset;
+                userTimeToCst.setMinutes(userTimeToCst.getMinutes() - diffFromCST);
+                const cstHour = userTimeToCst.getHours();
+                
+                // Apply 9PM CST override if needed
+                if (cstHour === 21) {
+                    currentRow = createScheduleRow(currentSpawnTime, {
+                        name: "Override Pattern",
+                        chest: "Arkeum",
+                        mine: "Orc Village"
+                    }, true);
+                } else {
+                    currentRow = createScheduleRow(currentSpawnTime, rotation, true);
+                }
+                
                 entries.push(currentRow);
                 
                 // Generate entries for next 12 hours (36 entries total - we already added the current one)
@@ -639,16 +704,44 @@
                     // Move to next spawn time
                     scheduleTime = new Date(scheduleTime.getTime() + SPAWN_INTERVAL * 60 * 1000);
                     
+                    // Convert schedule time to CST for checking special cases
+                    const scheduleTimeToCst = new Date(scheduleTime.getTime());
+                    scheduleTimeToCst.setMinutes(scheduleTimeToCst.getMinutes() - diffFromCST);
+                    const scheduleHourCst = scheduleTimeToCst.getHours();
+                    
                     // Check if we need to update rotation (hour change)
-                    if (Math.floor(scheduleTime.getTime() / (1000 * 60 * 60)) > 
-                        Math.floor((scheduleTime.getTime() - SPAWN_INTERVAL * 60 * 1000) / (1000 * 60 * 60))) {
-                        rotationIndex = (rotationIndex + 1) % ROTATIONS.length;
+                    const hourChanged = Math.floor(scheduleTime.getTime() / (1000 * 60 * 60)) > 
+                                        Math.floor((scheduleTime.getTime() - SPAWN_INTERVAL * 60 * 1000) / (1000 * 60 * 60));
+                    
+                    if (hourChanged) {
+                        // Special case: if we're moving from 9PM CST to 10PM CST, skip the next rotation
+                        // and go directly to the following one
+                        const prevSchedTimeToCst = new Date(scheduleTime.getTime() - SPAWN_INTERVAL * 60 * 1000);
+                        prevSchedTimeToCst.setMinutes(prevSchedTimeToCst.getMinutes() - diffFromCST);
+                        
+                        if (prevSchedTimeToCst.getHours() === 21 && scheduleHourCst === 22) {
+                            // Skip the next rotation (add 2 instead of 1)
+                            rotationIndex = (rotationIndex + 2) % ROTATIONS.length;
+                            console.log("Applied post-9PM CST skip, new index:", rotationIndex);
+                        } else {
+                            rotationIndex = (rotationIndex + 1) % ROTATIONS.length;
+                        }
                     }
                     
-                    rotation = ROTATIONS[rotationIndex];
-                    if (rotation) {
-                        const row = createScheduleRow(scheduleTime, rotation, false);
+                    // Apply 9PM CST override if needed
+                    if (scheduleHourCst === 21) {
+                        const row = createScheduleRow(scheduleTime, {
+                            name: "Override Pattern",
+                            chest: "Arkeum",
+                            mine: "Orc Village"
+                        }, false);
                         entries.push(row);
+                    } else {
+                        rotation = ROTATIONS[rotationIndex];
+                        if (rotation) {
+                            const row = createScheduleRow(scheduleTime, rotation, false);
+                            entries.push(row);
+                        }
                     }
                 }
                 
