@@ -768,13 +768,15 @@
                 
                 // Use the current hour and day to determine a predictable but varying pattern
                 const chestIndex = (hourOfDay + dayOfWeek) % CHEST_LOCATIONS.length;
-                const miningIndex = (hourOfDay + dayOfWeek + 2) % MINING_LOCATIONS.length;
                 
-                console.log(`Using default pattern - Hour: ${hourOfDay}, day: ${dayOfWeek}, chest index: ${chestIndex}, mining index: ${miningIndex}`);
+                // Mining location is always one position ahead of chest in our arrays
+                const miningLocation = getMiningLocationForChest(CHEST_LOCATIONS[chestIndex >= 0 ? chestIndex : (chestIndex + CHEST_LOCATIONS.length)]);
+                
+                console.log(`Using default pattern - Hour: ${hourOfDay}, day: ${dayOfWeek}, chest index: ${chestIndex}`);
                 
                 return {
                     chest: CHEST_LOCATIONS[chestIndex >= 0 ? chestIndex : (chestIndex + CHEST_LOCATIONS.length)],
-                    mining: MINING_LOCATIONS[miningIndex >= 0 ? miningIndex : (miningIndex + MINING_LOCATIONS.length)]
+                    mining: miningLocation
                 };
             }
             
@@ -812,38 +814,84 @@
                 
                 // Calculate new chest index based on hours elapsed
                 const newChestIndex = (chestIndex + hoursSinceRef) % CHEST_LOCATIONS.length;
+                const adjustedChestIndex = newChestIndex >= 0 ? newChestIndex : (newChestIndex + CHEST_LOCATIONS.length);
+                const chestLocation = CHEST_LOCATIONS[adjustedChestIndex];
                 
-                // Mining nodes are offset by the same pattern
-                const miningIndex = (chestIndex + hoursSinceRef) % MINING_LOCATIONS.length;
+                // Get the mining location that corresponds to this chest location
+                const miningLocation = getMiningLocationForChest(chestLocation);
                 
-                console.log(`Reference chest: ${latestReference.location} (index ${chestIndex}), new chest index: ${newChestIndex}, mining index: ${miningIndex}`);
+                console.log(`Reference chest: ${latestReference.location} (index ${chestIndex}), new chest index: ${newChestIndex}, chest: ${chestLocation}, mining: ${miningLocation}`);
                 
                 return {
-                    chest: CHEST_LOCATIONS[newChestIndex >= 0 ? newChestIndex : (newChestIndex + CHEST_LOCATIONS.length)],
-                    mining: MINING_LOCATIONS[miningIndex >= 0 ? miningIndex : (miningIndex + MINING_LOCATIONS.length)]
+                    chest: chestLocation,
+                    mining: miningLocation
                 };
             } 
             // If this is a mining reference
             else if (latestReference.type === 'mining') {
-                // Get the current mining index
-                const miningIndex = MINING_LOCATIONS.indexOf(latestReference.location);
-                if (miningIndex === -1) return { chest: "Unknown", mining: "Unknown" };
+                // Get the chest that corresponds to this mining location
+                const chestLocation = getChestLocationForMining(latestReference.location);
                 
-                // Calculate new mining index based on hours elapsed
-                const newMiningIndex = (miningIndex + hoursSinceRef) % MINING_LOCATIONS.length;
+                // Get the current chest index
+                const chestIndex = CHEST_LOCATIONS.indexOf(chestLocation);
+                if (chestIndex === -1) return { chest: "Unknown", mining: "Unknown" };
                 
-                // Chest locations are offset by the same pattern
-                const chestIndex = (miningIndex + hoursSinceRef) % CHEST_LOCATIONS.length;
+                // Calculate new chest based on hours elapsed
+                const newChestIndex = (chestIndex + hoursSinceRef) % CHEST_LOCATIONS.length;
+                const adjustedChestIndex = newChestIndex >= 0 ? newChestIndex : (newChestIndex + CHEST_LOCATIONS.length);
+                const newChestLocation = CHEST_LOCATIONS[adjustedChestIndex];
                 
-                console.log(`Reference mining: ${latestReference.location} (index ${miningIndex}), new mining index: ${newMiningIndex}, chest index: ${chestIndex}`);
+                // Get the mining location for the new chest
+                const newMiningLocation = getMiningLocationForChest(newChestLocation);
+                
+                console.log(`Reference mining: ${latestReference.location}, derived chest: ${chestLocation}, new chest: ${newChestLocation}, new mining: ${newMiningLocation}`);
                 
                 return {
-                    chest: CHEST_LOCATIONS[chestIndex >= 0 ? chestIndex : (chestIndex + CHEST_LOCATIONS.length)],
-                    mining: MINING_LOCATIONS[newMiningIndex >= 0 ? newMiningIndex : (newMiningIndex + MINING_LOCATIONS.length)]
+                    chest: newChestLocation,
+                    mining: newMiningLocation
                 };
             }
             
             return { chest: "Unknown", mining: "Unknown" };
+        }
+        
+        // Helper function to get the mining location that corresponds to a chest location
+        function getMiningLocationForChest(chestLocation) {
+            // The mapping is:
+            // Arkeum chest -> Orc Village mining 
+            // Orc Village chest -> Seal Sanctuary mining
+            // Seal Sanctuary chest -> Shrine of Devotion mining
+            // Shrine of Devotion chest -> Arkeum mining
+            
+            switch (chestLocation) {
+                case "Arkeum":
+                    return "Orc Village";
+                case "Orc Village":
+                    return "Seal Sanctuary";
+                case "Seal Sanctuary":
+                    return "Shrine of Devotion";
+                case "Shrine of Devotion":
+                    return "Arkeum";
+                default:
+                    return "Unknown";
+            }
+        }
+        
+        // Helper function to get the chest location that corresponds to a mining location
+        function getChestLocationForMining(miningLocation) {
+            // The inverse mapping of getMiningLocationForChest
+            switch (miningLocation) {
+                case "Orc Village":
+                    return "Arkeum";
+                case "Seal Sanctuary":
+                    return "Orc Village";
+                case "Shrine of Devotion":
+                    return "Seal Sanctuary";
+                case "Arkeum":
+                    return "Shrine of Devotion";
+                default:
+                    return "Unknown";
+            }
         }
         
         // Get the latest reference point
