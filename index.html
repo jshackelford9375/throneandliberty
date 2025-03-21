@@ -199,10 +199,6 @@
             .timer-display {
                 font-size: 3.5rem;
             }
-            
-            .upcoming-grid {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -210,6 +206,7 @@
     <header class="main-title">
         <div>Supple Void Supremacy</div>
         <div style="font-size: 1rem; margin-top: 0.5rem; color: var(--text-secondary);">Times displayed in your local time zone</div>
+        <div style="font-size: 0.8rem; margin-top: 0.2rem; color: var(--text-secondary);">Pattern based on UTC game time</div>
     </header>
     
     <div class="container">
@@ -266,7 +263,7 @@
         </div>
         
         <div class="upcoming-container">
-            <div class="upcoming-title">Upcoming Spawns</div>
+            <div class="upcoming-title">Upcoming Spawns (UTC Pattern)</div>
             <div class="upcoming-grid" id="upcoming-spawns">
                 <!-- Will be filled by JavaScript -->
             </div>
@@ -278,195 +275,227 @@
     </footer>
 
     <script>
-        // Define the locations
-        const locations = ["Orc Village", "Seal Sanctuary", "Shrine of Devotion", "Arkeum"];
-        
-        // Get the reference date for the 4-day cycle (March 20, 2025)
-        const startDate = new Date(2025, 2, 20);
-        
-        // Calculate offset between local time and CST
-        // This ensures the pattern is synchronized with the game server time
-        function calculateCSTOffset() {
-            const now = new Date();
-            const localTime = now.getTime();
-            
-            // Get the current time in CST
-            const cstTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-            const cstTimeMs = cstTime.getTime();
-            
-            // Calculate the local time when CST is at XX:00, XX:20, or XX:40
-            // This ensures spawns are synchronized correctly with the game
-            const cstMinutes = cstTime.getMinutes();
-            const cstHour = cstTime.getHours();
-            
-            let targetCSTTime;
-            if (cstMinutes < 20) {
-                // Next spawn at XX:20
-                targetCSTTime = new Date(cstTime);
-                targetCSTTime.setMinutes(20, 0, 0);
-            } else if (cstMinutes < 40) {
-                // Next spawn at XX:40
-                targetCSTTime = new Date(cstTime);
-                targetCSTTime.setMinutes(40, 0, 0);
-            } else {
-                // Next spawn at (XX+1):00
-                targetCSTTime = new Date(cstTime);
-                targetCSTTime.setHours(cstHour + 1);
-                targetCSTTime.setMinutes(0, 0, 0);
+        // DEFINITIVE UTC PATTERN - FROM USER DATA
+        // This is the exact and only pattern reference
+        const PATTERN = {
+            // Day 1 (March 21, March 25, etc.)
+            1: {
+                0: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 12:00 AM UTC
+                1: { chest: "Arkeum", mining: "Orc Village" },             // 1:00 AM UTC
+                2: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 2:00 AM UTC
+                3: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 3:00 AM UTC
+                4: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 4:00 AM UTC
+                5: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 5:00 AM UTC
+                6: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 6:00 AM UTC
+                7: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 7:00 AM UTC
+                8: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 8:00 AM UTC
+                9: { chest: "Arkeum", mining: "Orc Village" },             // 9:00 AM UTC
+                10: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 10:00 AM UTC
+                11: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 11:00 AM UTC
+                12: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 12:00 PM UTC
+                13: { chest: "Arkeum", mining: "Orc Village" },            // 1:00 PM UTC
+                14: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 2:00 PM UTC
+                15: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 3:00 PM UTC
+                16: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 4:00 PM UTC
+                17: { chest: "Arkeum", mining: "Orc Village" },            // 5:00 PM UTC
+                18: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 6:00 PM UTC
+                19: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 7:00 PM UTC
+                20: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 8:00 PM UTC
+                21: { chest: "Arkeum", mining: "Orc Village" },            // 9:00 PM UTC
+                22: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 10:00 PM UTC
+                23: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }  // 11:00 PM UTC
+            },
+            // Day 2 (March 22, March 26, etc.)
+            2: {
+                0: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 12:00 AM UTC
+                1: { chest: "Arkeum", mining: "Orc Village" },             // 1:00 AM UTC
+                2: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 2:00 AM UTC
+                3: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 3:00 AM UTC
+                4: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 4:00 AM UTC
+                5: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 5:00 AM UTC
+                6: { chest: "Arkeum", mining: "Orc Village" },             // 6:00 AM UTC
+                7: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 7:00 AM UTC
+                8: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 8:00 AM UTC
+                9: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 9:00 AM UTC
+                10: { chest: "Arkeum", mining: "Orc Village" },            // 10:00 AM UTC
+                11: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 11:00 AM UTC
+                12: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 12:00 PM UTC
+                13: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 1:00 PM UTC
+                14: { chest: "Arkeum", mining: "Orc Village" },            // 2:00 PM UTC
+                15: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 3:00 PM UTC
+                16: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 4:00 PM UTC
+                17: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 5:00 PM UTC
+                18: { chest: "Arkeum", mining: "Orc Village" },            // 6:00 PM UTC
+                19: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 7:00 PM UTC
+                20: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 8:00 PM UTC
+                21: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 9:00 PM UTC
+                22: { chest: "Arkeum", mining: "Orc Village" },            // 10:00 PM UTC
+                23: { chest: "Orc Village", mining: "Seal Sanctuary" }     // 11:00 PM UTC
+            },
+            // Day 3 (March 23, March 27, etc.)
+            3: {
+                0: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 12:00 AM UTC
+                1: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 1:00 AM UTC
+                2: { chest: "Arkeum", mining: "Orc Village" },             // 2:00 AM UTC
+                3: { chest: "Arkeum", mining: "Orc Village" },             // 3:00 AM UTC
+                4: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 4:00 AM UTC
+                5: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 5:00 AM UTC
+                6: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 6:00 AM UTC
+                7: { chest: "Arkeum", mining: "Orc Village" },             // 7:00 AM UTC
+                8: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 8:00 AM UTC
+                9: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 9:00 AM UTC
+                10: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 10:00 AM UTC
+                11: { chest: "Arkeum", mining: "Orc Village" },            // 11:00 AM UTC
+                12: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 12:00 PM UTC
+                13: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 1:00 PM UTC
+                14: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 2:00 PM UTC
+                15: { chest: "Arkeum", mining: "Orc Village" },            // 3:00 PM UTC
+                16: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 4:00 PM UTC
+                17: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 5:00 PM UTC
+                18: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 6:00 PM UTC
+                19: { chest: "Arkeum", mining: "Orc Village" },            // 7:00 PM UTC
+                20: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 8:00 PM UTC
+                21: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 9:00 PM UTC
+                22: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 10:00 PM UTC
+                23: { chest: "Arkeum", mining: "Orc Village" }             // 11:00 PM UTC
+            },
+            // Day 4 (March 24, March 28, etc.)
+            4: {
+                0: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 12:00 AM UTC
+                1: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 1:00 AM UTC
+                2: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 2:00 AM UTC
+                3: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 3:00 AM UTC
+                4: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 4:00 AM UTC
+                5: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 5:00 AM UTC
+                6: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 6:00 AM UTC
+                7: { chest: "Shrine of Devotion", mining: "Arkeum" },      // 7:00 AM UTC
+                8: { chest: "Arkeum", mining: "Orc Village" },             // 8:00 AM UTC
+                9: { chest: "Orc Village", mining: "Seal Sanctuary" },     // 9:00 AM UTC
+                10: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 10:00 AM UTC
+                11: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 11:00 AM UTC
+                12: { chest: "Arkeum", mining: "Orc Village" },            // 12:00 PM UTC
+                13: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 1:00 PM UTC
+                14: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 2:00 PM UTC
+                15: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 3:00 PM UTC
+                16: { chest: "Arkeum", mining: "Orc Village" },            // 4:00 PM UTC
+                17: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 5:00 PM UTC
+                18: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 6:00 PM UTC
+                19: { chest: "Shrine of Devotion", mining: "Arkeum" },     // 7:00 PM UTC
+                20: { chest: "Arkeum", mining: "Orc Village" },            // 8:00 PM UTC
+                21: { chest: "Orc Village", mining: "Seal Sanctuary" },    // 9:00 PM UTC
+                22: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }, // 10:00 PM UTC
+                23: { chest: "Shrine of Devotion", mining: "Arkeum" }      // 11:00 PM UTC
             }
+        };
+        
+        // REFERENCE DATE - MARCH 21, 2025 is DAY 1
+        const REFERENCE_DATE = new Date(Date.UTC(2025, 2, 21, 0, 0, 0, 0));
+        
+        // Function to get the pattern for any date and time
+        function getPattern(localDate) {
+            // Convert local date to UTC for pattern lookup
+            const utcDate = new Date(Date.UTC(
+                localDate.getUTCFullYear(),
+                localDate.getUTCMonth(),
+                localDate.getUTCDate(),
+                localDate.getUTCHours(),
+                0, 0, 0
+            ));
             
-            return {
-                offset: cstTimeMs - localTime,
-                nextSpawnCST: targetCSTTime
-            };
+            // Get UTC calendar date at midnight
+            const utcMidnight = new Date(Date.UTC(
+                utcDate.getUTCFullYear(),
+                utcDate.getUTCMonth(),
+                utcDate.getUTCDate(),
+                0, 0, 0, 0
+            ));
+            
+            // Calculate days since reference date
+            const diffTime = utcMidnight - REFERENCE_DATE;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Calculate day in 4-day cycle (1-4)
+            const dayInCycle = ((diffDays % 4) + 4) % 4 + 1;
+            
+            // Get UTC hour (0-23)
+            const utcHour = utcDate.getUTCHours();
+            
+            // Return pattern for this day and hour
+            return PATTERN[dayInCycle][utcHour];
         }
         
-        // Function to convert local time to equivalent CST hour for pattern calculation
-        function getPatternHour(localDate) {
-            // For pattern calculation, we need to know what CST hour corresponds to this local time
-            const localTime = new Date(localDate.toLocaleString());
-            const cstTime = new Date(localDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-            
-            // Return the CST hour for pattern calculation
-            return cstTime.getHours();
-        }
-        
-        // Function to determine the day in the 4-day cycle
-        function getDayInCycle(date) {
-            const localDate = new Date(date);
-            const cstDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-            
-            // Calculate days since the start date (in CST)
-            const cstStartDate = new Date(startDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-            const dayDiff = Math.floor((cstDate - cstStartDate) / (24 * 60 * 60 * 1000));
-            
-            return (dayDiff % 4) + 1; // Returns 1, 2, 3, or 4
-        }
-        
-        // Function to get locations based on time, considering special nighttime patterns
-        function getLocations(date) {
-            // Get the equivalent CST hour for pattern calculation
-            const hour = getPatternHour(date);
-            const dayInCycle = getDayInCycle(date);
-            
-            // For the night pattern (9 PM to midnight CST)
-            if (hour >= 21 && hour < 24) {
-                // Night patterns for each day
-                const nightPatterns = {
-                    1: { // Day 1
-                        21: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" },
-                        22: { chest: "Arkeum", mining: "Orc Village" },
-                        23: { chest: "Arkeum", mining: "Orc Village" }
-                    },
-                    2: { // Day 2
-                        21: { chest: "Orc Village", mining: "Seal Sanctuary" },
-                        22: { chest: "Shrine of Devotion", mining: "Arkeum" },
-                        23: { chest: "Shrine of Devotion", mining: "Arkeum" }
-                    },
-                    3: { // Day 3
-                        21: { chest: "Arkeum", mining: "Orc Village" },
-                        22: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" },
-                        23: { chest: "Seal Sanctuary", mining: "Shrine of Devotion" }
-                    },
-                    4: { // Day 4
-                        21: { chest: "Shrine of Devotion", mining: "Arkeum" },
-                        22: { chest: "Orc Village", mining: "Seal Sanctuary" },
-                        23: { chest: "Orc Village", mining: "Seal Sanctuary" }
-                    }
-                };
-                
-                return nightPatterns[dayInCycle][hour];
-            }
-            
-            // For regular hours - calculate based on the standard pattern
-            // Each location is active for 1 hour
-            const hourIndex = hour % 4;
-            
-            // The mining node is always one step ahead
-            const chestIndex = hourIndex % 4;
-            const miningIndex = (hourIndex + 1) % 4;
-            
-            return {
-                chest: locations[chestIndex],
-                mining: locations[miningIndex]
-            };
-        }
-        
-        // Function to get formatted time (12-hour format with AM/PM)
+        // Format time for display
         function formatTime(date) {
             let hours = date.getHours();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
             hours = hours % 12;
-            hours = hours ? hours : 12; // The hour '0' should be '12'
+            hours = hours ? hours : 12; // 0 = 12 in 12-hour format
             
             return `${hours}:00 ${ampm}`;
         }
         
-        // Function to update the display
+        // Update the main display
         function updateDisplay() {
             const now = new Date();
             
-            // Set minutes and seconds to 0 to get the current hour
+            // Create date objects for previous, current, and next hour
             const currentHour = new Date(now);
             currentHour.setMinutes(0, 0, 0);
             
-            // Calculate previous and next hours
             const previousHour = new Date(currentHour);
             previousHour.setHours(previousHour.getHours() - 1);
             
             const nextHour = new Date(currentHour);
             nextHour.setHours(nextHour.getHours() + 1);
             
-            // Get locations for these times
-            const previousLocations = getLocations(previousHour);
-            const currentLocations = getLocations(currentHour);
-            const nextLocations = getLocations(nextHour);
+            // Get patterns for these times
+            const previousPattern = getPattern(previousHour);
+            const currentPattern = getPattern(currentHour);
+            const nextPattern = getPattern(nextHour);
             
             // Update the display
             document.getElementById('previous-time').textContent = formatTime(previousHour);
-            document.getElementById('previous-chest').textContent = previousLocations.chest;
-            document.getElementById('previous-mining').textContent = previousLocations.mining;
+            document.getElementById('previous-chest').textContent = previousPattern.chest;
+            document.getElementById('previous-mining').textContent = previousPattern.mining;
             
             document.getElementById('current-time').textContent = formatTime(currentHour);
-            document.getElementById('current-chest').textContent = currentLocations.chest;
-            document.getElementById('current-mining').textContent = currentLocations.mining;
+            document.getElementById('current-chest').textContent = currentPattern.chest;
+            document.getElementById('current-mining').textContent = currentPattern.mining;
             
             document.getElementById('next-time').textContent = formatTime(nextHour);
-            document.getElementById('next-chest').textContent = nextLocations.chest;
-            document.getElementById('next-mining').textContent = nextLocations.mining;
+            document.getElementById('next-chest').textContent = nextPattern.chest;
+            document.getElementById('next-mining').textContent = nextPattern.mining;
             
-            // Update upcoming spawns
+            // Update upcoming spawns and countdown
             updateUpcomingSpawns(currentHour);
-            
-            // Update countdown
             updateCountdown();
         }
         
-        // Function to update the upcoming spawns section
+        // Update the upcoming spawns
         function updateUpcomingSpawns(currentHour) {
             const upcomingContainer = document.getElementById('upcoming-spawns');
-            upcomingContainer.innerHTML = ''; // Clear existing content
+            upcomingContainer.innerHTML = '';
             
-            // Show current spawn and next 10 spawns
+            // Show current plus next 10 spawns
             for (let i = 0; i <= 10; i++) {
-                const spawnTime = new Date(currentHour);
-                spawnTime.setHours(spawnTime.getHours() + i);
+                const localTime = new Date(currentHour);
+                localTime.setHours(currentHour.getHours() + i);
                 
-                const locations = getLocations(spawnTime);
+                const pattern = getPattern(localTime);
                 
                 const card = document.createElement('div');
                 card.className = 'upcoming-card';
                 
                 card.innerHTML = `
-                    <div class="upcoming-time">${formatTime(spawnTime)}</div>
+                    <div class="upcoming-time">${formatTime(localTime)}</div>
                     <div class="upcoming-location chest-location">
                         <span class="location-icon">📦</span>
-                        <span>${locations.chest}</span>
+                        <span>${pattern.chest}</span>
                     </div>
                     <div class="upcoming-location mining-location">
                         <span class="location-icon">💎</span>
-                        <span>${locations.mining}</span>
+                        <span>${pattern.mining}</span>
                     </div>
                 `;
                 
@@ -474,48 +503,65 @@
             }
         }
         
-        // Function to update the countdown timer
+        // Update the countdown timer
         function updateCountdown() {
             const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
             
-            // Calculate the next spawn time based on CST game server time
-            const cstInfo = calculateCSTOffset();
-            const nextSpawnCST = cstInfo.nextSpawnCST;
-            
-            // Convert to local time for countdown display
-            const nextSpawnLocal = new Date(nextSpawnCST.getTime() - cstInfo.offset);
-            
-            // Calculate time difference
-            const diffMs = nextSpawnLocal - now;
-            
-            // Calculate minutes and seconds
-            const minutes = Math.floor(diffMs / (1000 * 60));
-            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-            
-            // Format the countdown display (MM:SS)
-            const countdownStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            document.getElementById('countdown').textContent = countdownStr;
-            
-            // Check if we need to update the display
-            if (minutes === 0 && seconds === 0) {
-                setTimeout(() => {
-                    updateDisplay();
-                }, 1000);
+            // Calculate next 20-minute spawn (0, 20, or 40 minutes past the hour)
+            let nextMinute;
+            if (minutes < 20) {
+                nextMinute = 20;
+            } else if (minutes < 40) {
+                nextMinute = 40;
+            } else {
+                nextMinute = 60; // Next hour
             }
+            
+            // Calculate remaining time
+            let minutesRemaining, secondsRemaining;
+            
+            if (nextMinute === 60) {
+                minutesRemaining = 59 - minutes;
+                secondsRemaining = 59 - seconds;
+            } else {
+                minutesRemaining = nextMinute - minutes - 1;
+                secondsRemaining = 59 - seconds;
+                
+                // Handle edge case when seconds is 0
+                if (seconds === 0) {
+                    minutesRemaining++;
+                    secondsRemaining = 0;
+                }
+            }
+            
+            // Format the countdown display
+            const countdownStr = `${minutesRemaining.toString().padStart(2, '0')}:${secondsRemaining.toString().padStart(2, '0')}`;
+            document.getElementById('countdown').textContent = countdownStr;
         }
         
         // Initial update
         updateDisplay();
         
-        // Update the countdown every second
+        // Update countdown every second
         setInterval(() => {
             updateCountdown();
         }, 1000);
         
-        // Periodically update to ensure we stay in sync
+        // Update display every minute
+        setInterval(() => {
+            const now = new Date();
+            if (now.getSeconds() === 0) {
+                // Update on the minute
+                updateDisplay();
+            }
+        }, 1000);
+        
+        // Force update every hour
         setInterval(() => {
             updateDisplay();
-        }, 10 * 60 * 1000); // Every 10 minutes
+        }, 60 * 60 * 1000);
     </script>
 </body>
 </html>
